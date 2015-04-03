@@ -45,3 +45,6 @@ WebDAV over HTTP - Server - With modules
 [1] http://www.ietf.org/rfc/rfc2518.txt<br>
 [2] https://msdn.microsoft.com/en-us/library/ms876446(v=exchg.65).aspx<br>
 [3] https://tools.ietf.org/html/rfc4316<br>
+[4] http://tools.ietf.org/html/rfc4122<br>
+[5] http://tools.ietf.org/html/rfc3339<br>
+[6] http://www.webdav.org/specs/rfc4918.html<br>
