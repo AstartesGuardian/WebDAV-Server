@@ -3,22 +3,48 @@ package http.server;
 import java.util.HashSet;
 import java.util.Set;
 import webdav.server.IResourceManager;
+import webdav.server.standard.StandardResourceManager;
 
 public class HTTPServerSettings
 {
     // <editor-fold defaultstate="collapsed" desc="Constructor(s)">
-    public HTTPServerSettings(String serverName, HTTPCommand[] cmds, Class iResourceManager, String root)
+    public HTTPServerSettings(String serverName, HTTPCommand[] cmds, Class iResourceManager, String root, int timeout, int maxNbRequests)
     {
-        timeout = 5;
-        server = serverName;
-        httpVersion = 1.0;
-        allowedCommands = new HashSet<>();
+        this.timeout = timeout;
+        this.maxNbRequests = maxNbRequests;
+        this.server = serverName;
+        this.httpVersion = 1.1;
+        this.allowedCommands = new HashSet<>();
         
         for(HTTPCommand c : cmds)
             addAllowedCommand(c);
         
         this.root = root;
         this.iResourceManager = iResourceManager;
+    }
+    public HTTPServerSettings(String serverName, HTTPCommand[] cmds, Class iResourceManager, String root, int timeout)
+    {
+        this(serverName, cmds, iResourceManager, root, timeout, 100);
+    }
+    public HTTPServerSettings(String serverName, HTTPCommand[] cmds, Class iResourceManager, String root)
+    {
+        this(serverName, cmds, iResourceManager, root, 5);
+    }
+    public HTTPServerSettings(String serverName, HTTPCommand[] cmds, Class iResourceManager)
+    {
+        this(serverName, cmds, iResourceManager, "");
+    }
+    public HTTPServerSettings(String serverName, HTTPCommand[] cmds)
+    {
+        this(serverName, cmds, StandardResourceManager.class);
+    }
+    public HTTPServerSettings(String serverName)
+    {
+        this(serverName, HTTPCommand.getStandardCommands());
+    }
+    public HTTPServerSettings()
+    {
+        this("WebDav Server");
     }
     // </editor-fold>
     
@@ -56,7 +82,7 @@ public class HTTPServerSettings
     // </editor-fold>
     
     // <editor-fold defaultstate="collapsed" desc="Timeout">
-    protected int timeout;
+    protected final int timeout;
     /**
      * Get the timeout in seconds.
      * 
@@ -122,6 +148,19 @@ public class HTTPServerSettings
     public final void addAllowedCommand(Iterable<HTTPCommand> cmds)
     {
         cmds.forEach(cmd -> addAllowedCommand(cmd));
+    }
+    // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="MaxNbRequests">
+    protected final int maxNbRequests;
+    /**
+     * Get the maximum number of requests by TCP connection.
+     * 
+     * @return int
+     */
+    public int getMaxNbRequests()
+    {
+        return maxNbRequests;
     }
     // </editor-fold>
 }

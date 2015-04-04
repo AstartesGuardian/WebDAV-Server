@@ -23,6 +23,7 @@ public class HTTPServer implements Runnable
         this.settings = settings;
         this.scanIfNotAvailablePort = scanIfNotAvailablePort;
         this.useSSL = useSSL;
+        this.server = null;
     }
     /**
      * Create a HTTP Server.
@@ -53,6 +54,20 @@ public class HTTPServer implements Runnable
     
     private String[] cipherSuites = null;
     private SSLServerSocketFactory factory = null;
+    private ServerSocket server;
+    
+    /**
+     * Get the port used by the server.
+     * 
+     * @return int
+     */
+    public int getPort()
+    {
+        if(server == null)
+            return port;
+        else
+            return server.getLocalPort();
+    }
     
     /**
      * Create a ServerSocket. If the 'useSSL' has been specified as true, it
@@ -100,7 +115,7 @@ public class HTTPServer implements Runnable
             {
                 try
                 {
-                    ss = createSocket(p);
+                    ss = createSocket(p++);
                     break;
                 }
                 catch (Exception ex)
@@ -117,9 +132,15 @@ public class HTTPServer implements Runnable
     {
         try
         {
-            ServerSocket server = openSocket();
+            server = openSocket();
             HTTPEnvironment environment = new HTTPEnvironment(settings, settings.getRoot());
-            System.out.println("[SERVER] started on port " + server.getLocalPort());
+            System.out.println("[SERVER] \""
+                    + environment.getServerSettings().getServer()
+                    + "\" [Tout = " + environment.getServerSettings().getTimeout()
+                    + "s ; Nbmax = " + environment.getServerSettings().getMaxNbRequests()
+                    + "] started on port <"
+                    + this.getPort()
+                    + ">");
             
             do
             {
