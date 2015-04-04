@@ -48,3 +48,5 @@ WebDAV over HTTP - Server - With modules
 [4] http://tools.ietf.org/html/rfc4122<br>
 [5] http://tools.ietf.org/html/rfc3339<br>
 [6] http://www.webdav.org/specs/rfc4918.html<br>
+[7] https://tools.ietf.org/html/rfc2068<br>
+[8] http://tools.ietf.org/html/rfc2616<br>
