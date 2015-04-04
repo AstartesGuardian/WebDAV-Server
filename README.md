@@ -1,7 +1,7 @@
 # WebDAV-Server
 WebDAV over HTTP - Server - With modules
 
-<b>Informations :</b>
+<b>Information :</b>
 <table>
   <tr>
     <td><b>Language</b></td>
