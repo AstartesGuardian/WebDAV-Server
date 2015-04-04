@@ -1,5 +1,5 @@
 # WebDAV-Server
-WebDAV over HTTP - Server - With modules
+WebDAV over HTTP - Server - Modular
 
 <b>Information :</b>
 <table>
@@ -36,6 +36,8 @@ WebDAV over HTTP - Server - With modules
     <td>Unknown</td>
   </tr>
 </table>
+<br>
+Wiki : https://github.com/AstartesGuardian/WebDAV-Server/wiki
 
 <br><hr><h2><b>Fast code information</b></h2>
 
