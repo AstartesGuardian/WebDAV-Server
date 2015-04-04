@@ -8,6 +8,8 @@ public abstract class ICrypter
 {
     public enum Algorithm
     {
+        AES_CBC_NoPadding("AES", "AES/CBC/NoPadding", 128/8),
+        AES_CBC_PKCS5Padding("AES", "AES/CBC/PKCS5Padding", 128/8),
         AES_ECB_NoPadding("AES", "AES/ECB/NoPadding", 128/8),
         AES_ECB_PKCS5Padding("AES", "AES/ECB/PKCS5Padding", 128/8),
         DES_CBC_NoPadding("DES", "DES/CBC/NoPadding", 56/8),

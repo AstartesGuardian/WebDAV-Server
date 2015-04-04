@@ -15,7 +15,7 @@ public class WebDAVServerTester implements Runnable
     @Override
     public void run()
     {
-        LocalCryptedResourceManager.loadCipherCrypter(ICrypter.Algorithm.AES_ECB_PKCS5Padding);
+        LocalCryptedResourceManager.loadCipherCrypter(ICrypter.Algorithm.AES_CBC_PKCS5Padding);
         LocalCryptedResourceManager.setKey("Chocolate");
         
         HTTPServerSettings settings = new HTTPServerSettings("WebDav Server (Windows 8.1)",

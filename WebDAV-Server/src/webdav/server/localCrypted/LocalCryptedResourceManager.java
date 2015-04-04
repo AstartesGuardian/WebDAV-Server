@@ -11,8 +11,8 @@ public class LocalCryptedResourceManager implements IResourceManager
         return new LocalCryptedResource(path, crypter);
     }
     
-    private static CipherCrypter crypter;
-    public static void loadCipherCrypter(CipherCrypter.Algorithm algo)
+    private static ICrypter crypter;
+    public static void loadCipherCrypter(ICrypter.Algorithm algo)
     {
         try
         {

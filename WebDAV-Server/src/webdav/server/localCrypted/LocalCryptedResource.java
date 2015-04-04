@@ -7,13 +7,13 @@ import webdav.server.standard.StandardResource;
 
 public class LocalCryptedResource extends StandardResource
 {
-    public LocalCryptedResource(String path, CipherCrypter crypter)
+    public LocalCryptedResource(String path, ICrypter crypter)
     {
         super(path);
         this.crypter = crypter;
     }
     
-    protected final CipherCrypter crypter;
+    protected final ICrypter crypter;
     
     @Override
     public long getSize()
