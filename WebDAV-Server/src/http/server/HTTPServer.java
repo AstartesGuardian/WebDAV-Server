@@ -9,20 +9,41 @@ import javax.net.ssl.SSLServerSocketFactory;
 
 public class HTTPServer implements Runnable
 {
-    public HTTPServer(int port, boolean scanIfNotAvailablePort, boolean useSSL, HTTPServerSettings settings)
+    /**
+     * Create a HTTP Server.
+     * 
+     * @param port Port to use
+     * @param settings Settings of the server
+     * @param useSSL Use ANON SSL/TLS
+     * @param scanIfNotAvailablePort Use port scan if the 'port' parameter can't be opened
+     */
+    public HTTPServer(int port, HTTPServerSettings settings, boolean useSSL, boolean scanIfNotAvailablePort)
     {
         this.port = port;
         this.settings = settings;
         this.scanIfNotAvailablePort = scanIfNotAvailablePort;
         this.useSSL = useSSL;
     }
-    public HTTPServer(int port, boolean useSSL, HTTPServerSettings settings)
+    /**
+     * Create a HTTP Server.
+     * 
+     * @param port Port to use
+     * @param settings Settings of the server
+     * @param useSSL Use ANON SSL/TLS
+     */
+    public HTTPServer(int port, HTTPServerSettings settings, boolean useSSL)
     {
-        this(port, false, useSSL, settings);
+        this(port, settings, useSSL, false);
     }
+    /**
+     * Create a HTTP Server.
+     * 
+     * @param port Port to use
+     * @param settings Settings of the server
+     */
     public HTTPServer(int port, HTTPServerSettings settings)
     {
-        this(port, false, false, settings);
+        this(port, settings, false, false);
     }
     
     private final boolean scanIfNotAvailablePort;
@@ -32,6 +53,15 @@ public class HTTPServer implements Runnable
     
     private String[] cipherSuites = null;
     private SSLServerSocketFactory factory = null;
+    
+    /**
+     * Create a ServerSocket. If the 'useSSL' has been specified as true, it
+     * will create a SSLServerSocket without certification ("ANON" Cypher Suites).
+     * 
+     * @param port Port of the ServerSocket
+     * @return ServerSocket / SSLServerSocket
+     * @throws IOException 
+     */
     private ServerSocket createSocket(int port) throws IOException
     {
         if(useSSL)
@@ -39,7 +69,9 @@ public class HTTPServer implements Runnable
             if(factory == null)
             {
                 factory = (SSLServerSocketFactory)SSLServerSocketFactory.getDefault();
-                cipherSuites = Stream.of(factory.getSupportedCipherSuites())/*.filter(c -> c.toLowerCase().contains("dhe"))*/.toArray(String[]::new);
+                cipherSuites = Stream.of(factory.getSupportedCipherSuites())
+                        .filter(c -> c.toLowerCase().contains("anon"))
+                        .toArray(String[]::new);
                 Stream.of(cipherSuites).forEach(c -> System.out.println(c));
             }
             SSLServerSocket socket = (SSLServerSocket)factory.createServerSocket(port);
@@ -49,6 +81,15 @@ public class HTTPServer implements Runnable
         else
             return new ServerSocket(port);
     }
+    
+    /**
+     * Open a ServerSocket on the specified 'port'. If the port can't be opened
+     * and 'scanIfNotAvailablePort' has been specified as true, it will loop
+     * until an openable port is found.
+     * 
+     * @return ServerSocket
+     * @throws IOException 
+     */
     private ServerSocket openSocket() throws IOException
     {
         if(scanIfNotAvailablePort)
@@ -77,7 +118,7 @@ public class HTTPServer implements Runnable
         try
         {
             ServerSocket server = openSocket();
-            HTTPEnvironment environment = new HTTPEnvironment(settings, "C:\\Users\\Adrien\\Documents\\FTP_TEST");
+            HTTPEnvironment environment = new HTTPEnvironment(settings, settings.getRoot());
             System.out.println("[SERVER] started on port " + server.getLocalPort());
             
             do

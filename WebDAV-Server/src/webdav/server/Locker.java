@@ -6,14 +6,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
-import java.util.function.BiConsumer;
 import java.util.stream.Stream;
-import webdav.server.Lock.LockType;
 
-/**
- *
- * @author Adrien
- */
 public class Locker
 {
     private static Random rnd = null;

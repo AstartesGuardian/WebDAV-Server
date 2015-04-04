@@ -4,17 +4,11 @@ import webdav.server.Helper;
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
 import java.net.Socket;
-import java.nio.ByteBuffer;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
-import java.util.Locale;
-import org.omg.CORBA.Environment;
 
 public class HTTPServerRuntime implements Runnable
 {
@@ -63,16 +57,16 @@ public class HTTPServerRuntime implements Runnable
                 index += buff.length;
             }
             
-            System.out.println("************* " + read + " *************");
+            System.out.println("*************************");
             System.out.println(new String(input));
-            System.out.println("*******************************");
-            HTTPMessage inputMsg = new HTTPMessage(input, socket);
+            System.out.println("*************************");
+            HTTPMessage inputMsg = new HTTPMessage(input, socket, environment.getServerSettings().getAllowedCommands());
             
             HTTPMessage outputMsg = inputMsg.getCommand().Compute(inputMsg, environment);
             
             outputMsg.setHeader("Server", environment.getServerSettings().getServer());
             outputMsg.setHeader("Date", Helper.toString(new Date()));
-            outputMsg.setHeader("Keep-Alive", "timeout=5, max=100");
+            outputMsg.setHeader("Keep-Alive", "timeout=" + environment.getServerSettings().getTimeout() + ", max=100");
             
             byte[] output = outputMsg.toBytes();
             out.write(output, 0, output.length);
@@ -81,9 +75,6 @@ public class HTTPServerRuntime implements Runnable
             socket.close();
         }
         catch (Exception ex)
-        {
-            ex.printStackTrace(System.err);
-            System.out.println("[ERROR] " + ex.getMessage());
-        }
+        { }
     }
 }

@@ -3,12 +3,7 @@ package webdav.server.commands;
 import http.server.HTTPCommand;
 import http.server.HTTPEnvironment;
 import http.server.HTTPMessage;
-import java.util.List;
 
-/**
- *
- * @author Adrien
- */
 public class WD_Options extends HTTPCommand
 {
     public WD_Options()

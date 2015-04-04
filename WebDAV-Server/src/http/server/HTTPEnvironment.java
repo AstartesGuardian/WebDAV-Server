@@ -1,5 +1,7 @@
 package http.server;
 
+import webdav.server.IResource;
+
 public class HTTPEnvironment
 {
     // <editor-fold defaultstate="collapsed" desc="Constructor(s)">
@@ -18,9 +20,18 @@ public class HTTPEnvironment
     }
     // </editor-fold>
 
-    private String root;
+    // <editor-fold defaultstate="collapsed" desc="Root">
+    private final String root;
     public String getRoot()
     {
         return root;
     }
+    // </editor-fold>
+    
+    // <editor-fold defaultstate="collapsed" desc="Shortcuts">
+    public IResource createFromPath(String path)
+    {
+        return this.serverSettings.generateResourceManager().createFromPath(path);
+    }
+    // </editor-fold>
 }

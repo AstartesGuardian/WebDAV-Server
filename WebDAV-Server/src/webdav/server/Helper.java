@@ -1,18 +1,10 @@
 package webdav.server;
 
-import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import javax.xml.bind.DatatypeConverter;
-import sun.misc.BASE64Decoder;
 
-/**
- *
- * @author Adrien
- */
 public class Helper 
 {
     private Helper()

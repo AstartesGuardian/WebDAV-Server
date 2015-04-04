@@ -5,10 +5,6 @@ import http.server.HTTPEnvironment;
 import http.server.HTTPMessage;
 import java.io.File;
 
-/**
- *
- * @author Adrien
- */
 public class WD_Delete extends HTTPCommand
 {
     public WD_Delete()

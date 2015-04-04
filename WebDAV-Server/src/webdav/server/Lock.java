@@ -27,6 +27,11 @@ public class Lock
         this.owner = owner;
     }
     
+    public Long getTimeout()
+    {
+        return 604800L;
+    }
+    
     private String owner = null;
     public String getOwner()
     {

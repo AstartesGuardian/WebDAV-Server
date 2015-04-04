@@ -3,14 +3,8 @@ package webdav.server.commands;
 import http.server.HTTPCommand;
 import http.server.HTTPEnvironment;
 import http.server.HTTPMessage;
-import java.io.File;
-import java.io.IOException;
-import java.nio.file.Files;
+import webdav.server.IResource;
 
-/**
- *
- * @author Adrien
- */
 public class WD_Mkcol extends HTTPCommand
 {
     public WD_Mkcol()
@@ -23,13 +17,9 @@ public class WD_Mkcol extends HTTPCommand
     {
         HTTPMessage msg = new HTTPMessage(201, "Created");
         
-        File f = new File(environment.getRoot() + input.getPath().replace("/", "\\").trim());
-        try
-        {
-            f.mkdir();
-        }
-        catch (Exception ex)
-        { }
+        IResource f = environment.createFromPath(environment.getRoot() + input.getPath().replace("/", "\\").trim());
+        
+        f.createDirectory();
         
         msg.setHeader("Content-Type", "text/xml; charset=\"utf-8\"");
         return msg;

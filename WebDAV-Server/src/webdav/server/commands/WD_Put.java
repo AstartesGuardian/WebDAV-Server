@@ -3,21 +3,8 @@ package webdav.server.commands;
 import http.server.HTTPCommand;
 import http.server.HTTPEnvironment;
 import http.server.HTTPMessage;
-import webdav.server.Helper;
-import java.io.File;
-import java.io.IOException;
-import java.nio.file.FileSystems;
-import java.nio.file.Files;
-import java.nio.file.attribute.BasicFileAttributes;
-import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import webdav.server.IResource;
 
-/**
- *
- * @author Adrien
- */
 public class WD_Put extends HTTPCommand
 {
     public WD_Put()
@@ -30,21 +17,13 @@ public class WD_Put extends HTTPCommand
     {
         HTTPMessage msg = new HTTPMessage(200, "OK");
         
-        File f = new File(environment.getRoot() + input.getPath().replace("/", "\\").trim());
-        try
-        {
-            f.createNewFile();
-        }
-        catch (IOException ex)
-        { }
+        IResource f = environment.createFromPath(environment.getRoot() + input.getPath().replace("/", "\\").trim());
+        
+        f.createFile();
+            
         if(!input.getHeader("content-length").equals("0"))
         {
-            try
-            {
-                Files.write(f.toPath(), input.getContent());
-            }
-            catch (IOException ex)
-            { }
+            f.setContent(input.getContent());
         }
         
         msg.setHeader("Content-Type", "text/xml; charset=\"utf-8\"");

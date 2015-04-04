@@ -3,13 +3,17 @@ package webdav.server.commands;
 import http.server.HTTPCommand;
 import http.server.HTTPEnvironment;
 import http.server.HTTPMessage;
+import java.io.UnsupportedEncodingException;
+import java.net.URLDecoder;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import webdav.server.IResource;
 
-public class WD_Get extends HTTPCommand
+public class WD_Post extends HTTPCommand
 {
-    public WD_Get()
+    public WD_Post()
     {
-        super("get");
+        super("post");
     }
     
     @Override
@@ -17,6 +21,11 @@ public class WD_Get extends HTTPCommand
     {
         IResource f = environment.createFromPath(environment.getRoot() + input.getPath().replace("/", "\\").trim());
         
+        try {
+            System.out.println("/////////////////// CONTENT : " + URLDecoder.decode(new String(input.getContent()), "UTF-8"));
+        } catch (UnsupportedEncodingException ex) {
+            Logger.getLogger(WD_Post.class.getName()).log(Level.SEVERE, null, ex);
+        }
         if(!f.exists())
         {
             System.out.println("/////////////////// NOT FOUND : " + f.getName());

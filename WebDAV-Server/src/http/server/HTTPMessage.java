@@ -4,31 +4,15 @@ import java.io.UnsupportedEncodingException;
 import java.net.InetAddress;
 import java.net.Socket;
 import java.net.URLDecoder;
-import java.nio.ByteBuffer;
-import java.text.SimpleDateFormat;
 import java.util.Arrays;
-import java.util.Date;
 import java.util.HashMap;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import java.util.stream.Stream;
 
 public class HTTPMessage
 {
     // <editor-fold defaultstate="collapsed" desc="Constructor(s)">
-    /*
-    public HTTPMessage(HTTPCommand command)
-    {
-        this.command = command;
-        this.responseMessage = null;
-        headers = new HashMap<>();
-        content = "";
-        
-        initialize();
-    }*/
     public HTTPMessage(int code, String message)
     {
         this.command = null;
@@ -40,7 +24,7 @@ public class HTTPMessage
         
         initialize();
     }
-    public HTTPMessage(byte[] byteMessage, Socket clientSocket)
+    public HTTPMessage(byte[] byteMessage, Socket clientSocket, Set<HTTPCommand> commands)
     {
         this.responseMessage = null;
         headers = new HashMap<>();
@@ -58,7 +42,7 @@ public class HTTPMessage
         final int header_content_separator_index = message.indexOf(separator);
         
         final int header_index = message.indexOf("\r\n");
-        command = HTTPCommand.getFrom(message.substring(0, message.indexOf(" ")));
+        command = HTTPCommand.getFrom(commands, message.substring(0, message.indexOf(" ")));
         
         this.path = message.substring(message.indexOf(" "), message.indexOf(" ", message.indexOf(" ") + 1));
         message = message.substring(header_index + 1);
@@ -96,22 +80,26 @@ public class HTTPMessage
     private byte[] content;
     // </editor-fold>
     
+    // <editor-fold defaultstate="collapsed" desc="From">
     public InetAddress from()
     {
         return this.inetAddress;
     }
+    // </editor-fold>
     
+    // <editor-fold defaultstate="collapsed" desc="Path">
     public String getPath()
     {
         try
         {
-            return URLDecoder.decode(path, "UTF-8");
+            return URLDecoder.decode(path, "UTF-8").trim();
         }
         catch (UnsupportedEncodingException ex)
         {
             return path;
         }
     }
+    // </editor-fold>
     
     // <editor-fold defaultstate="collapsed" desc="Formaters">
     private String formatHeaderName(String header)

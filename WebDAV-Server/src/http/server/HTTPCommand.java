@@ -1,23 +1,56 @@
 package http.server;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.Set;
+import webdav.server.commands.WD_Delete;
+import webdav.server.commands.WD_Get;
+import webdav.server.commands.WD_Head;
+import webdav.server.commands.WD_Lock;
+import webdav.server.commands.WD_Mkcol;
+import webdav.server.commands.WD_Move;
+import webdav.server.commands.WD_Options;
+import webdav.server.commands.WD_Post;
+import webdav.server.commands.WD_Propfind;
+import webdav.server.commands.WD_Proppatch;
+import webdav.server.commands.WD_Put;
+import webdav.server.commands.WD_Unlock;
 
 public abstract class HTTPCommand
 {
     public HTTPCommand(String command)
     {
         this.name = command.trim().toUpperCase();
-        
-        commands.add(this);
     }
     
     private final String name;
     
+    /**
+     * Get the name of the command.
+     * 
+     * @return String
+     */
+    public String getName()
+    {
+        return name;
+    }
+    
+    /**
+     * Execute the command with the HTTPMessage 'input' and in the 'environment'.
+     * 
+     * @param input Received HTTP message
+     * @param environment Server environment
+     * @return HTTPMessage
+     */
     public abstract HTTPMessage Compute(HTTPMessage input, HTTPEnvironment environment);
     
-    private static final List<HTTPCommand> commands = new ArrayList<>();
-    public static HTTPCommand getFrom(String command)
+    /**
+     * Find a HTTPCommand in 'commands' with the command name 'command'.
+     * If no HTTPCommand found, returns null.
+     * 
+     * @param commands Set of HTTPCommand to search in.
+     * @param command Command name to find.
+     * @return HTTPCommand
+     */
+    public static HTTPCommand getFrom(Set<HTTPCommand> commands, String command)
     {
         return commands.stream()
                 .filter(c -> c.name.equals(command.trim().toUpperCase()))
@@ -25,9 +58,29 @@ public abstract class HTTPCommand
                 .orElse(null);
     }
     
-    public String getName()
+    /**
+     * Generate the command list with : OPTIONS, PROPFIND, PROPPATCH, MKCOL,
+     * HEAD, GET, PUT, DELETE, LOCK, UNLOCK and MOVE.
+     * 
+     * @return HTTPCommand[]
+     */
+    public static HTTPCommand[] getStandardCommands()
     {
-        return name;
+        return new HTTPCommand[]
+        {
+            new WD_Options(),
+            new WD_Propfind(),
+            new WD_Proppatch(),
+            new WD_Mkcol(),
+            new WD_Head(),
+            new WD_Post(),
+            new WD_Get(),
+            new WD_Put(),
+            new WD_Delete(),
+            new WD_Lock(),
+            new WD_Unlock(),
+            new WD_Move()
+        };
     }
 
     @Override
