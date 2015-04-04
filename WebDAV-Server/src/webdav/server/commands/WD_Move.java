@@ -16,8 +16,6 @@ public class WD_Move extends HTTPCommand
     @Override
     public HTTPMessage Compute(HTTPMessage input, HTTPEnvironment environment) 
     {
-        HTTPMessage msg = new HTTPMessage(201, "Created");
-        
         try
         {
             String dest = input.getHeader("destination");
@@ -25,6 +23,10 @@ public class WD_Move extends HTTPCommand
             String shortDest = URLDecoder.decode(dest.substring(dest.indexOf(host) + host.length()), "UTF-8");
 
             IResource fsrc = environment.createFromPath(environment.getRoot() + input.getPath().replace("/", "\\").trim());
+            
+            if(!fsrc.exists())
+                return new HTTPMessage(404, "Not found");
+            
             IResource fdest = environment.createFromPath(environment.getRoot() + shortDest.replace("/", "\\").trim());
             
             fsrc.renameTo(fdest);
@@ -32,6 +34,7 @@ public class WD_Move extends HTTPCommand
         catch (Exception ex)
         { }
         
+        HTTPMessage msg = new HTTPMessage(201, "Created");
         msg.setHeader("Content-Type", "text/xml; charset=\"utf-8\"");
         return msg;
     }

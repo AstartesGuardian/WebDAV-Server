@@ -21,18 +21,8 @@ public class WD_Post extends HTTPCommand
     {
         IResource f = environment.createFromPath(environment.getRoot() + input.getPath().replace("/", "\\").trim());
         
-        try {
-            System.out.println("/////////////////// CONTENT : " + URLDecoder.decode(new String(input.getContent()), "UTF-8"));
-        } catch (UnsupportedEncodingException ex) {
-            Logger.getLogger(WD_Post.class.getName()).log(Level.SEVERE, null, ex);
-        }
         if(!f.exists())
-        {
-            System.out.println("/////////////////// NOT FOUND : " + f.getName());
             return new HTTPMessage(404, "Not found");
-        }
-        else
-            System.out.println("/////////////////// FOUND : " + f.getName());
            
         HTTPMessage msg = new HTTPMessage(200, "OK");
         

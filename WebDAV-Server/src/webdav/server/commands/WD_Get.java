@@ -18,12 +18,7 @@ public class WD_Get extends HTTPCommand
         IResource f = environment.createFromPath(environment.getRoot() + input.getPath().replace("/", "\\").trim());
         
         if(!f.exists())
-        {
-            System.out.println("/////////////////// NOT FOUND : " + f.getName());
             return new HTTPMessage(404, "Not found");
-        }
-        else
-            System.out.println("/////////////////// FOUND : " + f.getName());
            
         HTTPMessage msg = new HTTPMessage(200, "OK");
         

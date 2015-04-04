@@ -95,11 +95,13 @@ public class WD_Propfind extends HTTPCommand
     @Override
     public HTTPMessage Compute(HTTPMessage input, HTTPEnvironment environment) 
     {
-        HTTPMessage msg = new HTTPMessage(207, "Multi-Status");
-        
         StringBuilder content = new StringBuilder("<?xml version=\"1.0\" encoding=\"utf-8\" ?>\r\n<D:multistatus xmlns:D=\"DAV:\">\r\n");
         
         IResource f = environment.createFromPath(environment.getRoot() + input.getPath().replace("/", "\\").trim());
+        
+        if(!f.exists())
+            return new HTTPMessage(404, "Not found");
+        
         content.append(getInfo(f, environment));
         
         if(input.getHeader("depth").trim().equals("0"))
@@ -113,6 +115,7 @@ public class WD_Propfind extends HTTPCommand
         
         content.append("</D:multistatus>");
         
+        HTTPMessage msg = new HTTPMessage(207, "Multi-Status");
         msg.setHeader("Content-Type", "text/xml; charset=\"utf-8\"");
         msg.setContent(content.toString());
         return msg;

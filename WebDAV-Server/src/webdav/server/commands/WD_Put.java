@@ -20,7 +20,7 @@ public class WD_Put extends HTTPCommand
         IResource f = environment.createFromPath(environment.getRoot() + input.getPath().replace("/", "\\").trim());
         
         f.createFile();
-            
+        
         if(!input.getHeader("content-length").equals("0"))
         {
             f.setContent(input.getContent());

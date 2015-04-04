@@ -72,7 +72,7 @@ public class HTTPServerRuntime implements Runnable
                 }
 
                 System.out.println("*************************");
-                System.out.println(new String(input));
+                System.out.println(new String(input, "UTF-8"));
                 System.out.println("*************************");
                 HTTPMessage inputMsg = new HTTPMessage(input, socket, environment.getServerSettings().getAllowedCommands());
 

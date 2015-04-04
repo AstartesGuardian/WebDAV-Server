@@ -15,12 +15,13 @@ public class WD_Head extends HTTPCommand
     @Override
     public HTTPMessage Compute(HTTPMessage input, HTTPEnvironment environment) 
     {
-        HTTPMessage msg = new HTTPMessage(200, "OK");
-        
         IResource f = environment.createFromPath(environment.getRoot() + input.getPath().replace("/", "\\").trim());
         
-        msg.setHeader("Content-Length", String.valueOf(f.getSize()));
+        if(!f.exists())
+            return new HTTPMessage(404, "Not found");
         
+        HTTPMessage msg = new HTTPMessage(200, "OK");
+        msg.setHeader("Content-Length", String.valueOf(f.getSize()));
         msg.setHeader("Content-Type", "text/xml; charset=\"utf-8\"");
         return msg;
     }

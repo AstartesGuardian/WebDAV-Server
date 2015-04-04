@@ -5,7 +5,6 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.FileTime;
-import java.time.Instant;
 import java.util.Date;
 import java.util.stream.Stream;
 import webdav.server.IResource;
@@ -24,8 +23,9 @@ public class StandardResource implements IResource
             this.fa = null;
         }
     }
-    private final File file;
-    private BasicFileAttributes fa;
+    
+    protected final File file;
+    protected BasicFileAttributes fa;
     
 
     @Override

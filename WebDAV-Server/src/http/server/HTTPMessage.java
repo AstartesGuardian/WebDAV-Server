@@ -8,6 +8,8 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import java.util.stream.Stream;
 
 public class HTTPMessage
@@ -145,8 +147,13 @@ public class HTTPMessage
     }
     public void setContent(String content)
     {
-        this.content = content.getBytes();
-        setHeader("Content-Length", String.valueOf(content.length()));
+        try
+        {
+            this.content = content.getBytes("UTF-8");
+            setHeader("Content-Length", String.valueOf(content.length()));
+        }
+        catch (UnsupportedEncodingException ex)
+        { }
     }
     public void setContent(byte[] content)
     {
@@ -158,19 +165,26 @@ public class HTTPMessage
     // <editor-fold defaultstate="collapsed" desc="Converters">
     public byte[] toBytes()
     {
-        if(content.length > 0)
+        try
         {
-            byte[] headers = getHeadersString().getBytes();
+            if(content.length > 0)
+            {
+                byte[] headers = getHeadersString().getBytes("UTF-8");
 
-            byte[] result = new byte[headers.length + content.length];
+                byte[] result = new byte[headers.length + content.length];
 
-            System.arraycopy(headers, 0, result, 0, headers.length);
-            System.arraycopy(content, 0, result, headers.length, content.length);
+                System.arraycopy(headers, 0, result, 0, headers.length);
+                System.arraycopy(content, 0, result, headers.length, content.length);
 
-            return result;
+                return result;
+            }
+            else
+                return getHeadersString().getBytes("UTF-8");
         }
-        else
-            return getHeadersString().getBytes();
+        catch (UnsupportedEncodingException ex)
+        {
+            return null;
+        }
     }
 
     private String getHeadersString()
