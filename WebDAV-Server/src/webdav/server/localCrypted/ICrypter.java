@@ -45,6 +45,23 @@ public abstract class ICrypter
         }
     }
     
+    public static byte[] md5(String str) throws NoSuchAlgorithmException
+    {
+        try
+        {
+            return md5(str.getBytes("UTF-8"));
+        }
+        catch (UnsupportedEncodingException ex)
+        {
+            return null;
+        }
+    }
+    public static byte[] md5(byte[] data) throws NoSuchAlgorithmException
+    {
+        MessageDigest md = MessageDigest.getInstance("MD5");
+        //md.update(data);
+        return md.digest(data);
+    }
     protected static byte[] sha256(String str) throws NoSuchAlgorithmException
     {
         try

@@ -8,19 +8,24 @@ import webdav.server.standard.StandardResourceManager;
 public class HTTPServerSettings
 {
     // <editor-fold defaultstate="collapsed" desc="Constructor(s)">
-    public HTTPServerSettings(String serverName, HTTPCommand[] cmds, Class iResourceManager, String root, int timeout, int maxNbRequests)
+    public HTTPServerSettings(String serverName, HTTPCommand[] cmds, Class iResourceManager, String root, int timeout, int maxNbRequests, HTTPAuthenticationManager authenticationManager)
     {
         this.timeout = timeout;
         this.maxNbRequests = maxNbRequests;
         this.server = serverName;
         this.httpVersion = 1.1;
         this.allowedCommands = new HashSet<>();
+        this.authenticationManager = authenticationManager;
         
         for(HTTPCommand c : cmds)
             addAllowedCommand(c);
         
         this.root = root;
         this.iResourceManager = iResourceManager;
+    }
+    public HTTPServerSettings(String serverName, HTTPCommand[] cmds, Class iResourceManager, String root, int timeout, int maxNbRequests)
+    {
+        this(serverName, cmds, iResourceManager, root, timeout, maxNbRequests, null);
     }
     public HTTPServerSettings(String serverName, HTTPCommand[] cmds, Class iResourceManager, String root, int timeout)
     {
@@ -161,6 +166,19 @@ public class HTTPServerSettings
     public int getMaxNbRequests()
     {
         return maxNbRequests;
+    }
+    // </editor-fold>
+    
+    // <editor-fold defaultstate="collapsed" desc="Authentication Manager">
+    protected final HTTPAuthenticationManager authenticationManager;
+    /**
+     * Get the authentication manager to use.
+     * 
+     * @return HTTPAuthenticationManager
+     */
+    public HTTPAuthenticationManager getAuthenticationManager()
+    {
+        return authenticationManager;
     }
     // </editor-fold>
 }

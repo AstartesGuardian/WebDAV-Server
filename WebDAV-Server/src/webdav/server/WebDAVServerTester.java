@@ -5,10 +5,12 @@ import http.server.HTTPCommand;
 import http.server.HTTPServer;
 import http.server.HTTPServerSettings;
 import java.io.IOException;
+import java.security.NoSuchAlgorithmException;
+import webdav.server.localCrypted.ICrypter;
 
 public class WebDAVServerTester implements Runnable
 {
-    public static void main(String[] args) throws IOException
+    public static void main(String[] args) throws IOException, NoSuchAlgorithmException
     {
         new WebDAVServerTester().run();
     }

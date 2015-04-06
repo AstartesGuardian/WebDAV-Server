@@ -9,6 +9,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
+import webdav.server.IResourceManager;
+import webdav.server.commands.WD_Options;
 
 public class HTTPServerRuntime implements Runnable
 {
@@ -33,6 +35,8 @@ public class HTTPServerRuntime implements Runnable
     {
         try
         {
+            HTTPAuthenticationManager userManager = environment.getAuthenticationManager();
+            
             for(int nbRequest = 0; nbRequest < environment.getServerSettings().getMaxNbRequests(); nbRequest++)
             {
                 List<byte[]> buffers = new ArrayList<>();
@@ -76,7 +80,24 @@ public class HTTPServerRuntime implements Runnable
                 System.out.println("*************************");
                 HTTPMessage inputMsg = new HTTPMessage(input, socket, environment.getServerSettings().getAllowedCommands());
 
-                HTTPMessage outputMsg = inputMsg.getCommand().Compute(inputMsg, environment);
+                HTTPMessage outputMsg;
+                
+                HTTPAuthentication user = null;
+                if(userManager != null)
+                    user = userManager.checkAuth(inputMsg);
+                
+                if(userManager != null
+                        && !new WD_Options().equals(inputMsg.getCommand())
+                        && environment.createFromPath(inputMsg.getPath()).needsAuthentification(user))
+                {
+                    outputMsg = new HTTPMessage(401, "Unauthorized");
+                    outputMsg.setHeader("WWW-Authenticate", "Digest realm=\"" + userManager.getRealm() + "\", qop=\"auth,auth-int\", nonce=\"" + userManager.generateNonce() + "\", opaque=\"" + userManager.generateNonce() + "\"");
+                }
+                else
+                {
+                    outputMsg = inputMsg.getCommand().Compute(inputMsg, environment);
+                }
+                
 
                 outputMsg.setHeader("Server", environment.getServerSettings().getServer());
                 outputMsg.setHeader("Date", Helper.toString(new Date()));

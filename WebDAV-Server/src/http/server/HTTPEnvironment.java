@@ -34,4 +34,11 @@ public class HTTPEnvironment
         return this.serverSettings.generateResourceManager().createFromPath(path);
     }
     // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="Authentication Manager">
+    HTTPAuthenticationManager getAuthenticationManager()
+    {
+        return serverSettings.getAuthenticationManager();
+    }
+    // </editor-fold>
 }

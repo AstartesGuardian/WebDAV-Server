@@ -8,8 +8,6 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import java.util.stream.Stream;
 
 public class HTTPMessage
@@ -76,7 +74,7 @@ public class HTTPMessage
     private final String path;
     
     private final InetAddress inetAddress;
-    private final String responseMessage;
+    public String responseMessage;
     
     private final Map<String, String> headers;
     private byte[] content;
@@ -100,6 +98,10 @@ public class HTTPMessage
         {
             return path;
         }
+    }
+    public String getPurePath()
+    {
+         return path.trim();
     }
     // </editor-fold>
     

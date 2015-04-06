@@ -1,31 +1,47 @@
 package webdav.server.localCrypted;
 
+import http.server.HTTPAuthentication;
+import java.security.NoSuchAlgorithmException;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import javax.crypto.NoSuchPaddingException;
 import webdav.server.IResource;
 import webdav.server.IResourceManager;
 
 public class LocalCryptedResourceManager implements IResourceManager
 {
+    public LocalCryptedResourceManager()
+    {
+        
+    }
+    
     @Override
     public IResource createFromPath(String path)
     {
-        return new LocalCryptedResource(path, crypter);
-    }
-    
-    private static ICrypter crypter;
-    public static void loadCipherCrypter(ICrypter.Algorithm algo)
-    {
         try
         {
-            crypter = new CipherCrypter(algo);
+            ICrypter crypter = new CipherCrypter(algo);
+            crypter.setKey(user.getPassword());
+            return new LocalCryptedResource(path, crypter);
         }
         catch (Exception ex)
         {
-            crypter = null;
+            return null;
         }
     }
     
-    public static void setKey(String key)
+    private static ICrypter.Algorithm algo;
+    public static void setAlgorithm(ICrypter.Algorithm algo)
     {
-        crypter.setKey(key);
+        LocalCryptedResourceManager.algo = algo;
+    }
+    
+    private HTTPAuthentication user;
+    @Override
+    public void setUser(HTTPAuthentication user)
+    {
+        this.user = user;
     }
 }

@@ -1,5 +1,6 @@
 package webdav.server.localCrypted;
 
+import http.server.HTTPAuthentication;
 import java.nio.file.Files;
 import java.util.stream.Stream;
 import webdav.server.IResource;
@@ -10,10 +11,15 @@ public class LocalCryptedResource extends StandardResource
     public LocalCryptedResource(String path, ICrypter crypter)
     {
         super(path);
+        
         this.crypter = crypter;
     }
     
-    protected final ICrypter crypter;
+    private ICrypter crypter = null;
+    protected ICrypter getCrypter()
+    {
+        return crypter;
+    }
     
     @Override
     public long getSize()
@@ -25,7 +31,7 @@ public class LocalCryptedResource extends StandardResource
     public IResource[] listResources()
     {
         return Stream.of(file.listFiles())
-                .map(f -> new LocalCryptedResource(f.getPath(), this.crypter))
+                .map(f -> new LocalCryptedResource(f.getPath(), getCrypter()))
                 .toArray(IResource[]::new);
     }
 
@@ -34,7 +40,7 @@ public class LocalCryptedResource extends StandardResource
     {
         try
         {
-            return this.crypter.decrypt(Files.readAllBytes(file.toPath()));
+            return getCrypter().decrypt(Files.readAllBytes(file.toPath()));
         }
         catch (Exception ex)
         {
@@ -47,9 +53,19 @@ public class LocalCryptedResource extends StandardResource
     {
         try
         {
-            Files.write(file.toPath(), this.crypter.encrypt(content));
+            Files.write(file.toPath(), getCrypter().encrypt(content));
         }
         catch (Exception ex)
-        { }
+        {
+            ex.printStackTrace(); }
+    }
+    
+    @Override
+    public boolean needsAuthentification(HTTPAuthentication user)
+    {
+        if(user == null)
+            return true;
+        
+        return false;
     }
 }

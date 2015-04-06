@@ -1,5 +1,6 @@
 package webdav.server.standard;
 
+import http.server.HTTPAuthentication;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -150,5 +151,11 @@ public class StandardResource implements IResource
         {
             return false;
         }
+    }
+
+    @Override
+    public boolean needsAuthentification(HTTPAuthentication user)
+    {
+        return false;
     }
 }

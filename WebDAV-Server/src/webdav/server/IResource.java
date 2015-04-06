@@ -1,5 +1,7 @@
 package webdav.server;
 
+import http.server.HTTPAuthentication;
+import http.server.HTTPAuthenticationManager;
 import java.nio.file.attribute.FileTime;
 import java.util.Date;
 
@@ -106,4 +108,13 @@ public interface IResource
      * @return boolean
      */
     public boolean createFile();
+    
+    /**
+     * Get if the resource needs an authentification to be accessed.
+     * If the current authentification is not enough, returns true.
+     * 
+     * @param user User (null if no user authentified)
+     * @return boolean
+     */
+    public boolean needsAuthentification(HTTPAuthentication user);
 }

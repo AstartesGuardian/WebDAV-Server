@@ -1,5 +1,7 @@
 package webdav.server;
 
+import http.server.HTTPAuthentication;
+
 public interface IResourceManager
 {
     /**
@@ -10,4 +12,12 @@ public interface IResourceManager
      * @return The generated resource
      */
     public IResource createFromPath(String path);
+    
+    /**
+     * Define the user for the current session. Useful for managers using the
+     * information of the users.
+     * 
+     * @param user User authenticated in the current session
+     */
+    public void setUser(HTTPAuthentication user);
 }
