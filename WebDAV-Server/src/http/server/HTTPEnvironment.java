@@ -1,6 +1,8 @@
 package http.server;
 
+import org.omg.CORBA.Environment;
 import webdav.server.IResource;
+import webdav.server.IResourceManager;
 
 public class HTTPEnvironment
 {
@@ -9,6 +11,12 @@ public class HTTPEnvironment
     {
         this.serverSettings = serverSettings;
         this.root = root;
+    }
+    public HTTPEnvironment(HTTPEnvironment parent)
+    {
+        this(parent.serverSettings, parent.root);
+        
+        this.iResourceManager = serverSettings.generateResourceManager();
     }
     // </editor-fold>
     
@@ -28,10 +36,18 @@ public class HTTPEnvironment
     }
     // </editor-fold>
     
+    // <editor-fold defaultstate="collapsed" desc="Resource manager">
+    private IResourceManager iResourceManager;
+    public IResourceManager getResourceManager()
+    {
+        return iResourceManager;
+    }
+    // </editor-fold>
+    
     // <editor-fold defaultstate="collapsed" desc="Shortcuts">
     public IResource createFromPath(String path)
     {
-        return this.serverSettings.generateResourceManager().createFromPath(path);
+        return getResourceManager().createFromPath(path);
     }
     // </editor-fold>
 

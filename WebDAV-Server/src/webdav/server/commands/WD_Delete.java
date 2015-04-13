@@ -3,7 +3,7 @@ package webdav.server.commands;
 import http.server.HTTPCommand;
 import http.server.HTTPEnvironment;
 import http.server.HTTPMessage;
-import java.io.File;
+import webdav.server.IResource;
 
 public class WD_Delete extends HTTPCommand
 {
@@ -17,7 +17,7 @@ public class WD_Delete extends HTTPCommand
     {
         HTTPMessage msg = new HTTPMessage(200, "OK");
         
-        File f = new File(environment.getRoot() + input.getPath().replace("/", "\\").trim());
+        IResource f = getResource(input.getPath(), environment);
         try
         {
             f.delete();

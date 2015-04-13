@@ -19,7 +19,7 @@ public class WD_Post extends HTTPCommand
     @Override
     public HTTPMessage Compute(HTTPMessage input, HTTPEnvironment environment) 
     {
-        IResource f = environment.createFromPath(environment.getRoot() + input.getPath().replace("/", "\\").trim());
+        IResource f = getResource(input.getPath(), environment);
         
         if(!f.exists())
             return new HTTPMessage(404, "Not found");
@@ -37,9 +37,9 @@ public class WD_Post extends HTTPCommand
 
             for(IResource sf : f.listResources())
                 if(sf.isDirectory())
-                    content += "<directory>" + sf.getName() + "</directory>";
+                    content += "<directory>" + sf.getWebName()+ "</directory>";
                 else
-                    content += "<file><name>" + sf.getName() + "</name><size>" + sf.getSize() + "</size><type>" + sf.getMimeType() + "</type></file>";
+                    content += "<file><name>" + sf.getWebName() + "</name><size>" + sf.getSize() + "</size><type>" + sf.getMimeType() + "</type></file>";
             content += "</resources>";
 
             msg.setContent(content);

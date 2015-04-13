@@ -31,15 +31,25 @@ public class HTTPMessage
         this.inetAddress = clientSocket.getInetAddress();
         
         String message = null;
+        
+        int headerLen = 0;
+        while(byteMessage[headerLen] != '\r'
+                || byteMessage[headerLen + 1] != '\n'
+                || byteMessage[headerLen + 2] != '\r'
+                || byteMessage[headerLen + 3] != '\n')
+        {
+            headerLen++;
+        }
+        
         try
         {
-            message = new String(byteMessage, "UTF-8");
+            message = new String(byteMessage, 0, headerLen, "UTF-8");
         }
         catch (UnsupportedEncodingException ex)
         { }
         
         final String separator = "\r\n\r\n";
-        final int header_content_separator_index = message.indexOf(separator);
+        final int header_content_separator_index = headerLen;
         
         final int header_index = message.indexOf("\r\n");
         command = HTTPCommand.getFrom(commands, message.substring(0, message.indexOf(" ")));
@@ -52,14 +62,12 @@ public class HTTPMessage
         else
             content = new byte[0];
         
-        Stream.of(message.substring(0, header_content_separator_index - header_index).split("\r\n"))
+        Stream.of(message.split("\r\n"))
+                .filter(s -> !s.isEmpty())
                 .forEach(header ->
                 {
-                    if(header != null && !header.isEmpty())
-                    {
-                        final int sep = header.indexOf(':');
-                        setHeader(header.substring(0, sep), header.substring(sep + 1));
-                    }
+                    final int sep = header.indexOf(':');
+                    setHeader(header.substring(0, sep), header.substring(sep + 1));
                 });
     }
     

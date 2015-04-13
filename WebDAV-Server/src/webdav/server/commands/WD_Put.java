@@ -17,7 +17,7 @@ public class WD_Put extends HTTPCommand
     {
         HTTPMessage msg = new HTTPMessage(200, "OK");
         
-        IResource f = environment.createFromPath(environment.getRoot() + input.getPath().replace("/", "\\").trim());
+        IResource f = getResource(input.getPath(), environment);
         
         f.createFile();
         
@@ -30,4 +30,13 @@ public class WD_Put extends HTTPCommand
         return msg;
     }
     
+    @Override
+    public void Continue(HTTPMessage input, byte[] data, HTTPEnvironment environment)
+    {
+        if(data.length > 0)
+        {
+            IResource f = getResource(input.getPath(), environment);
+            f.appendContent(data);
+        }
+    }
 }

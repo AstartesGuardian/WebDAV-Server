@@ -6,7 +6,6 @@ import http.server.HTTPServer;
 import http.server.HTTPServerSettings;
 import java.io.IOException;
 import java.security.NoSuchAlgorithmException;
-import webdav.server.localCrypted.ICrypter;
 
 public class WebDAVServerTester implements Runnable
 {
@@ -23,7 +22,7 @@ public class WebDAVServerTester implements Runnable
                 StandardResourceManager.class,
                 "D:\\Documents\\FTP_TEST");
         
-        HTTPServer s = new HTTPServer(1700, settings, false, true);
+        HTTPServer s = new HTTPServer(1703, settings, false, true);
         
         s.run();
     }

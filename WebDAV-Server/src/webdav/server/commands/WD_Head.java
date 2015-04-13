@@ -15,7 +15,7 @@ public class WD_Head extends HTTPCommand
     @Override
     public HTTPMessage Compute(HTTPMessage input, HTTPEnvironment environment) 
     {
-        IResource f = environment.createFromPath(environment.getRoot() + input.getPath().replace("/", "\\").trim());
+        IResource f = getResource(input.getPath(), environment);
         
         if(!f.exists())
             return new HTTPMessage(404, "Not found");

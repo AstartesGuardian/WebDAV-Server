@@ -8,7 +8,7 @@ import webdav.server.standard.StandardResourceManager;
 public class HTTPServerSettings
 {
     // <editor-fold defaultstate="collapsed" desc="Constructor(s)">
-    public HTTPServerSettings(String serverName, HTTPCommand[] cmds, Class iResourceManager, String root, int timeout, int maxNbRequests, HTTPAuthenticationManager authenticationManager)
+    public HTTPServerSettings(String serverName, HTTPCommand[] cmds, Class iResourceManager, String root, int timeout, int maxNbRequests, HTTPAuthenticationManager authenticationManager, boolean printErrors)
     {
         this.timeout = timeout;
         this.maxNbRequests = maxNbRequests;
@@ -22,6 +22,11 @@ public class HTTPServerSettings
         
         this.root = root;
         this.iResourceManager = iResourceManager;
+        this.printErrors = printErrors;
+    }
+    public HTTPServerSettings(String serverName, HTTPCommand[] cmds, Class iResourceManager, String root, int timeout, int maxNbRequests, HTTPAuthenticationManager authenticationManager)
+    {
+        this(serverName, cmds, iResourceManager, root, timeout, maxNbRequests, authenticationManager, false);
     }
     public HTTPServerSettings(String serverName, HTTPCommand[] cmds, Class iResourceManager, String root, int timeout, int maxNbRequests)
     {
@@ -179,6 +184,20 @@ public class HTTPServerSettings
     public HTTPAuthenticationManager getAuthenticationManager()
     {
         return authenticationManager;
+    }
+    // </editor-fold>
+
+    
+    // <editor-fold defaultstate="collapsed" desc="Authentication Manager">
+    private final boolean printErrors;
+    /**
+     * Get if the server has to print errors.
+     * 
+     * @return boolean
+     */
+    public boolean printErrors()
+    {
+        return printErrors;
     }
     // </editor-fold>
 }

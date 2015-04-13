@@ -13,6 +13,10 @@ public interface IResourceManager
      */
     public IResource createFromPath(String path);
     
+    public int getMaxBufferSize();
+    public int getStepBufferSize();
+    
+    
     /**
      * Define the user for the current session. Useful for managers using the
      * information of the users.

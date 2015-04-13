@@ -17,7 +17,7 @@ public class WD_Mkcol extends HTTPCommand
     {
         HTTPMessage msg = new HTTPMessage(201, "Created");
         
-        IResource f = environment.createFromPath(environment.getRoot() + input.getPath().replace("/", "\\").trim());
+        IResource f = getResource(input.getPath(), environment);
         
         f.createDirectory();
         

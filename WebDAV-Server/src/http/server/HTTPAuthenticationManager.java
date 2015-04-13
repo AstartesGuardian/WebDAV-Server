@@ -5,8 +5,6 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
 import java.util.StringTokenizer;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import webdav.server.Helper;
 import webdav.server.localCrypted.ICrypter;
 
@@ -19,8 +17,8 @@ public abstract class HTTPAuthenticationManager
     }
     
     private final Random rnd;
-    
     private final String realm;
+    
     public String getRealm()
     {
         return realm;
@@ -49,8 +47,7 @@ public abstract class HTTPAuthenticationManager
                     sp[1] = sp[1].trim();
                     if(sp[1].startsWith("\"") && sp[1].endsWith("\""))
                         sp[1] = sp[1].substring(1, sp[1].length() - 1);
-
-                System.out.println("*** " + sp[0].trim() + " : " + sp[1]);
+                    
                     authValues.put(sp[0].trim().toLowerCase(), sp[1]);
                 }
             }
@@ -84,8 +81,7 @@ public abstract class HTTPAuthenticationManager
             
             String receivedValue = authValues.get("response");
             String resultValue = Helper.toHex(ICrypter.md5(ha1 + ":" + nonce + ":" + nonceCount + ":" + clientNonce + ":" + qop + ":" + ha2));
-            System.out.println(resultValue);
-            System.out.println(receivedValue);
+            
             if(resultValue.equals(receivedValue))
                 return user;
         }

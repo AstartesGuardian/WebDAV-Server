@@ -3,6 +3,10 @@ package webdav.server.commands;
 import http.server.HTTPCommand;
 import http.server.HTTPEnvironment;
 import http.server.HTTPMessage;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import webdav.server.Helper;
 import webdav.server.IResource;
 
@@ -13,17 +17,17 @@ public class WD_Propfind extends HTTPCommand
         super("propfind");
     }
     
-    private String getInfo(IResource f, HTTPEnvironment environment)
+    private String getInfo(IResource f, String host, HTTPEnvironment environment)
     {
         if(!f.exists())
             return null;
         
         if(f.isFile())
-            return getInfoFile(f, environment);
+            return getInfoFile(f, host, environment);
         else
-            return getInfoFolder(f, environment);
+            return getInfoFolder(f, host, environment);
     }
-    private String getInfoFolder(IResource f, HTTPEnvironment environment)
+    private String getInfoFolder(IResource f, String host, HTTPEnvironment environment)
     {
         String pattern =
 "    <D:response>\r\n" +
@@ -48,12 +52,15 @@ public class WD_Propfind extends HTTPCommand
 "      </D:propstat>\r\n" +
 "    </D:response>\r\n";
 
+        String displayName = f.getWebName();
+        String path = f.getPath(environment.getRoot());
+        
         return pattern
-                .replace("%PATH%", f.getName())
+                .replace("%PATH%", (path == null ? "null" : ("http://" + (host.replace("/", "") + path.replace("\\", "/")).replace("//", "/"))))
                 .replace("%CREATION-DATE%", f.getCreationTime().toString().substring(0, "0000-00-00T00:00:00".length()) + "-00:00")
-                .replace("%DISPLAY-NAME%", f.getName());
+                .replace("%DISPLAY-NAME%", (displayName == null ? "null" : displayName));
     }
-    private String getInfoFile(IResource f, HTTPEnvironment environment)
+    private String getInfoFile(IResource f, String host, HTTPEnvironment environment)
     {
         String pattern =
 "    <D:response>\r\n" +
@@ -82,13 +89,18 @@ public class WD_Propfind extends HTTPCommand
 "      </D:propstat>\r\n" +
 "    </D:response>\r\n";
         
+        String mimeType = f.getMimeType();
+        String displayName = f.getWebName();
+        
+        String path = f.getPath(environment.getRoot());
+        
         return pattern
-                .replace("%PATH%", f.getName())
+                .replace("%PATH%", (path == null ? "null" : ("http://" + (host.replace("/", "") + path.replace("\\", "/")).replace("//", "/"))))
                 .replace("%CREATION-DATE%", f.getCreationTime().toString().substring(0, "0000-00-00T00:00:00".length()) + "-00:00")
                 .replace("%LAST-MODIFIED%", Helper.toString(f.getLastModified()))
-                .replace("%DISPLAY-NAME%", f.getName())
+                .replace("%DISPLAY-NAME%", (displayName == null ? "null" : displayName))
                 .replace("%LENGTH%", String.valueOf(f.getSize()))
-                .replace("%TYPE%", f.getMimeType())
+                .replace("%TYPE%", (mimeType == null ? "text/binary" : mimeType))
                 .replace("%ENTITY-TAG%", "zzyzx");
     }
 
@@ -96,13 +108,16 @@ public class WD_Propfind extends HTTPCommand
     public HTTPMessage Compute(HTTPMessage input, HTTPEnvironment environment) 
     {
         StringBuilder content = new StringBuilder("<?xml version=\"1.0\" encoding=\"utf-8\" ?>\r\n<D:multistatus xmlns:D=\"DAV:\">\r\n");
+        String host = input.getHeader("host");
         
-        IResource f = environment.createFromPath(environment.getRoot() + input.getPath().replace("/", "\\").trim());
+        IResource f = getResource(input.getPath(), environment);
         
         if(!f.exists())
+        {
+            System.out.println("[FILE] : "+f.getPath(environment.getRoot())+" NOT FOUND");
             return new HTTPMessage(404, "Not found");
-        
-        content.append(getInfo(f, environment));
+        }
+        content.append(getInfo(f, host, environment));
         
         if(input.getHeader("depth").trim().equals("0"))
         { // d = 0
@@ -110,10 +125,11 @@ public class WD_Propfind extends HTTPCommand
         else
         { // d = 1
             for(IResource subFile : f.listResources())
-                content.append(getInfo(subFile, environment));
+                content.append(getInfo(subFile, host, environment));
         }
         
         content.append("</D:multistatus>");
+        System.out.println(content.toString());
         
         HTTPMessage msg = new HTTPMessage(207, "Multi-Status");
         msg.setHeader("Content-Type", "text/xml; charset=\"utf-8\"");

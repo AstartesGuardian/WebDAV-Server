@@ -3,7 +3,10 @@ package webdav.server.standard;
 import http.server.HTTPAuthentication;
 import java.io.File;
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
+import java.net.URLEncoder;
 import java.nio.file.Files;
+import java.nio.file.StandardOpenOption;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.FileTime;
 import java.util.Date;
@@ -15,18 +18,24 @@ public class StandardResource implements IResource
     public StandardResource(String path)
     {
         this.file = new File(path);
-        try
-        {
-            this.fa = Files.readAttributes(file.toPath(), BasicFileAttributes.class);
-        }
-        catch (IOException ex)
-        {
-            this.fa = null;
-        }
     }
     
     protected final File file;
-    protected BasicFileAttributes fa;
+    
+    private BasicFileAttributes fa;
+    protected BasicFileAttributes getFA()
+    {
+        if(fa == null)
+            try
+            {
+                this.fa = Files.readAttributes(file.toPath(), BasicFileAttributes.class);
+            }
+            catch (IOException ex)
+            {
+                this.fa = null;
+            }
+        return fa;
+    }
     
 
     @Override
@@ -44,13 +53,28 @@ public class StandardResource implements IResource
     @Override
     public String getWebName()
     {
-        return file.getName();
+        try {
+            return URLEncoder.encode(file.getName(), "UTF-8").trim();
+        } catch (UnsupportedEncodingException ex) {
+            return null;
+        }
     }
 
     @Override
-    public String getName()
+    public String getPath(String start)
     {
-        return file.getName();
+        try
+        {
+            String result = file.getAbsolutePath().substring(start.length()).replace("\\", "/");
+            if(!result.startsWith("/"))
+                return "/" + result;
+            else
+                return result;
+        }
+        catch(Exception ex)
+        {
+            return null;
+        }
     }
 
     @Override
@@ -69,13 +93,13 @@ public class StandardResource implements IResource
     @Override
     public long getSize()
     {
-        return fa.size();
+        return getFA().size();
     }
 
     @Override
     public FileTime getCreationTime()
     {
-        return fa.creationTime();
+        return getFA().creationTime();
     }
     
     @Override
@@ -114,12 +138,29 @@ public class StandardResource implements IResource
     @Override
     public void setContent(byte[] content)
     {
-        try
-        {
-            Files.write(file.toPath(), content);
-        }
-        catch (IOException ex)
-        { }
+        boolean leave = false;
+        for(int i = 0; !leave && i < 1000; i++)
+            try
+            {
+                Files.write(file.toPath(), content);
+                leave = true;
+            }
+            catch (IOException ex)
+            { }
+    }
+
+    @Override
+    public void appendContent(byte[] content)
+    {
+        boolean leave = false;
+        for(int i = 0; !leave && i < 1000; i++)
+            try
+            {
+                Files.write(file.toPath(), content, StandardOpenOption.APPEND);
+                leave = true;
+            }
+            catch (IOException ex)
+            { }
     }
 
     @Override

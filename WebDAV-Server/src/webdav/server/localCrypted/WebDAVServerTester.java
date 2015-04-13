@@ -26,7 +26,7 @@ public class WebDAVServerTester implements Runnable
                 new LocalCryptedAuthenticationManager("Crypted WebDAV Server")
         );
         
-        HTTPServer s = new HTTPServer(1700, settings, false, true);
+        HTTPServer s = new HTTPServer(1702, settings, false, true);
         
         s.run();
     }

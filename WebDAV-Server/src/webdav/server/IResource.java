@@ -30,9 +30,10 @@ public interface IResource
     /**
      * Get the resource name.
      * 
+     * @param start String to remove at the beginning of the path
      * @return String
      */
-    public String getName();
+    public String getPath(String start);
     /**
      * Get the mime type of the resource.
      * 
@@ -82,6 +83,12 @@ public interface IResource
      * @param content Content to put in the resource
      */
     public void setContent(byte[] content);
+    /**
+     * Append a content to the resource.
+     * 
+     * @param content Content to append in the resource
+     */
+    public void appendContent(byte[] content);
     
     /**
      * Delete the resource.

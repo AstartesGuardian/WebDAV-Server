@@ -22,12 +22,12 @@ public class WD_Move extends HTTPCommand
             String host = input.getHeader("host");
             String shortDest = URLDecoder.decode(dest.substring(dest.indexOf(host) + host.length()), "UTF-8");
 
-            IResource fsrc = environment.createFromPath(environment.getRoot() + input.getPath().replace("/", "\\").trim());
+            IResource fsrc = getResource(input.getPath(), environment);
             
             if(!fsrc.exists())
                 return new HTTPMessage(404, "Not found");
             
-            IResource fdest = environment.createFromPath(environment.getRoot() + shortDest.replace("/", "\\").trim());
+            IResource fdest = getResource(shortDest, environment);
             
             fsrc.renameTo(fdest);
         }

@@ -1,6 +1,9 @@
 package http.server;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Set;
+import webdav.server.IResource;
 import webdav.server.commands.WD_Delete;
 import webdav.server.commands.WD_Get;
 import webdav.server.commands.WD_Head;
@@ -19,6 +22,7 @@ public abstract class HTTPCommand
     public HTTPCommand(String command)
     {
         this.name = command.trim().toUpperCase();
+        openedResources = new HashMap<>();
     }
     
     private final String name;
@@ -41,6 +45,9 @@ public abstract class HTTPCommand
      * @return HTTPMessage
      */
     public abstract HTTPMessage Compute(HTTPMessage input, HTTPEnvironment environment);
+    
+    public void Continue(HTTPMessage input, byte[] data, HTTPEnvironment environment)
+    { }
     
     /**
      * Find a HTTPCommand in 'commands' with the command name 'command'.
@@ -93,5 +100,30 @@ public abstract class HTTPCommand
     public String toString()
     {
         return name;
+    }
+    
+    
+    
+    
+    
+    
+    
+    
+    private final Map<String, IResource> openedResources;
+    
+    protected IResource getResource(String path, HTTPEnvironment environment)
+    {
+        if(openedResources.containsKey(path))
+            return openedResources.get(path);
+        else
+        {
+            IResource rs = environment.createFromPath(environment.getRoot() + path.replace("/", "\\").trim());
+            openedResources.put(path, rs);
+            return rs;
+        }
+    }
+    protected void closeResource(String path)
+    {
+        openedResources.remove(path);
     }
 }

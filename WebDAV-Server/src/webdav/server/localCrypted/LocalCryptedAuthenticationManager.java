@@ -13,7 +13,6 @@ public class LocalCryptedAuthenticationManager extends HTTPAuthenticationManager
     @Override
     protected HTTPAuthentication getUser(String username)
     {
-        System.out.println(username);
         if(username.trim().toLowerCase().equals("username"))
             return new HTTPAuthentication("username", "password");
         
