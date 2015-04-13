@@ -62,7 +62,7 @@ public abstract class ICrypter
         //md.update(data);
         return md.digest(data);
     }
-    protected static byte[] sha256(String str) throws NoSuchAlgorithmException
+    public static byte[] sha256(String str) throws NoSuchAlgorithmException
     {
         try
         {
@@ -73,7 +73,7 @@ public abstract class ICrypter
             return null;
         }
     }
-    protected static byte[] sha256(byte[] data) throws NoSuchAlgorithmException
+    public static byte[] sha256(byte[] data) throws NoSuchAlgorithmException
     {
         MessageDigest md = MessageDigest.getInstance("SHA-256");
         md.update(data);

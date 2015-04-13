@@ -3,8 +3,11 @@ package webdav.server.commands;
 import http.server.HTTPCommand;
 import http.server.HTTPEnvironment;
 import http.server.HTTPMessage;
+import java.io.UnsupportedEncodingException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.net.URLDecoder;
+import java.net.URLEncoder;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import webdav.server.Helper;
@@ -20,14 +23,21 @@ public class WD_Propfind extends HTTPCommand
     private String getInfo(IResource f, String host, HTTPEnvironment environment)
     {
         if(!f.exists())
-            return null;
+            return "";
         
-        if(f.isFile())
-            return getInfoFile(f, host, environment);
-        else
-            return getInfoFolder(f, host, environment);
+        try
+        {
+            if(f.isFile())
+                return getInfoFile(f, host, environment);
+            else
+                return getInfoFolder(f, host, environment);
+        }
+        catch(UnsupportedEncodingException ex)
+        {
+            return "";
+        }
     }
-    private String getInfoFolder(IResource f, String host, HTTPEnvironment environment)
+    private String getInfoFolder(IResource f, String host, HTTPEnvironment environment) throws UnsupportedEncodingException
     {
         String pattern =
 "    <D:response>\r\n" +
@@ -56,11 +66,11 @@ public class WD_Propfind extends HTTPCommand
         String path = f.getPath(environment.getRoot());
         
         return pattern
-                .replace("%PATH%", (path == null ? "null" : ("http://" + (host.replace("/", "") + path.replace("\\", "/")).replace("//", "/"))))
+                .replace("%PATH%", (path == null ? "null" : ("http://" + (host.replace("/", "") + Helper.toUTF8(path.replace("\\", "/"))).replace("//", "/"))))
                 .replace("%CREATION-DATE%", f.getCreationTime().toString().substring(0, "0000-00-00T00:00:00".length()) + "-00:00")
-                .replace("%DISPLAY-NAME%", (displayName == null ? "null" : displayName));
+                .replace("%DISPLAY-NAME%", (displayName == null ? "null" : Helper.toUTF8(displayName)));
     }
-    private String getInfoFile(IResource f, String host, HTTPEnvironment environment)
+    private String getInfoFile(IResource f, String host, HTTPEnvironment environment) throws UnsupportedEncodingException
     {
         String pattern =
 "    <D:response>\r\n" +
@@ -95,7 +105,7 @@ public class WD_Propfind extends HTTPCommand
         String path = f.getPath(environment.getRoot());
         
         return pattern
-                .replace("%PATH%", (path == null ? "null" : ("http://" + (host.replace("/", "") + path.replace("\\", "/")).replace("//", "/"))))
+                .replace("%PATH%", (path == null ? "null" : ("http://" + (host.replace("/", "") + Helper.toUTF8(path.replace("\\", "/"))).replace("//", "/"))))
                 .replace("%CREATION-DATE%", f.getCreationTime().toString().substring(0, "0000-00-00T00:00:00".length()) + "-00:00")
                 .replace("%LAST-MODIFIED%", Helper.toString(f.getLastModified()))
                 .replace("%DISPLAY-NAME%", (displayName == null ? "null" : displayName))

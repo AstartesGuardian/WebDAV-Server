@@ -26,6 +26,48 @@ public abstract class HTTPAuthenticationManager
     
     protected abstract HTTPAuthentication getUser(String username);
     
+    protected HTTPAuthentication getByPassUser(HTTPMessage request)
+    {
+        try
+        {
+            if(!request.containsHeader("Authorization"))
+                return null;
+            
+            String authHeader = request.getHeader("Authorization");
+            authHeader = authHeader.substring(authHeader.indexOf(" ") + 1);
+            
+            StringTokenizer token = new StringTokenizer(authHeader, ",");
+            Map<String, String> authValues = new HashMap<>();
+            while(token.hasMoreTokens())
+            {
+                String str = token.nextToken();
+                String[] sp = str.split("=");
+                if(sp.length == 2)
+                {
+                    sp[1] = sp[1].trim();
+                    if(sp[1].startsWith("\"") && sp[1].endsWith("\""))
+                        sp[1] = sp[1].substring(1, sp[1].length() - 1);
+                    
+                    authValues.put(sp[0].trim().toLowerCase(), sp[1]);
+                }
+            }
+            
+            if(!authValues.containsKey("username") ||
+                    !authValues.containsKey("response"))
+                return null;
+            
+            
+            String username = authValues.get("username");
+            String password = authValues.get("response");
+            
+            return new HTTPAuthentication(username, password);
+        }
+        catch (Exception ex)
+        { }
+        
+        return null;
+    }
+    
     public HTTPAuthentication checkAuth(HTTPMessage request)
     {
         try
@@ -52,11 +94,11 @@ public abstract class HTTPAuthenticationManager
                 }
             }
             
-            if(!authValues.containsKey("username") &&
-                    !authValues.containsKey("nonce") &&
-                    !authValues.containsKey("nc") &&
-                    !authValues.containsKey("cnonce") &&
-                    !authValues.containsKey("qop") &&
+            if(!authValues.containsKey("username") ||
+                    !authValues.containsKey("nonce") ||
+                    !authValues.containsKey("nc") ||
+                    !authValues.containsKey("cnonce") ||
+                    !authValues.containsKey("qop") ||
                     !authValues.containsKey("response"))
                 return null;
             

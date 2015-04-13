@@ -11,6 +11,7 @@ import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.FileTime;
 import java.util.Date;
 import java.util.stream.Stream;
+import webdav.server.Helper;
 import webdav.server.IResource;
 
 public class StandardResource implements IResource
@@ -58,11 +59,7 @@ public class StandardResource implements IResource
     @Override
     public String getWebName()
     {
-        try {
-            return URLEncoder.encode(file.getName(), "UTF-8").trim();
-        } catch (UnsupportedEncodingException ex) {
-            return null;
-        }
+        return Helper.toUTF8(file.getName()).trim();
     }
 
     @Override

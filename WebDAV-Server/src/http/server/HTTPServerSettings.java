@@ -8,7 +8,16 @@ import webdav.server.standard.StandardResourceManager;
 public class HTTPServerSettings
 {
     // <editor-fold defaultstate="collapsed" desc="Constructor(s)">
-    public HTTPServerSettings(String serverName, HTTPCommand[] cmds, Class iResourceManager, String root, int timeout, int maxNbRequests, HTTPAuthenticationManager authenticationManager, boolean printErrors)
+    public HTTPServerSettings(
+            String serverName,
+            HTTPCommand[] cmds,
+            Class iResourceManager,
+            String root,
+            int timeout,
+            int maxNbRequests,
+            HTTPAuthenticationManager authenticationManager,
+            boolean printErrors,
+            boolean printRequests)
     {
         this.timeout = timeout;
         this.maxNbRequests = maxNbRequests;
@@ -23,6 +32,11 @@ public class HTTPServerSettings
         this.root = root;
         this.iResourceManager = iResourceManager;
         this.printErrors = printErrors;
+        this.printRequests = printRequests;
+    }
+    public HTTPServerSettings(String serverName, HTTPCommand[] cmds, Class iResourceManager, String root, int timeout, int maxNbRequests, HTTPAuthenticationManager authenticationManager, boolean printErrors)
+    {
+        this(serverName, cmds, iResourceManager, root, timeout, maxNbRequests, authenticationManager, printErrors, false);
     }
     public HTTPServerSettings(String serverName, HTTPCommand[] cmds, Class iResourceManager, String root, int timeout, int maxNbRequests, HTTPAuthenticationManager authenticationManager)
     {
@@ -188,7 +202,7 @@ public class HTTPServerSettings
     // </editor-fold>
 
     
-    // <editor-fold defaultstate="collapsed" desc="Authentication Manager">
+    // <editor-fold defaultstate="collapsed" desc="Print errors">
     private final boolean printErrors;
     /**
      * Get if the server has to print errors.
@@ -196,6 +210,19 @@ public class HTTPServerSettings
      * @return boolean
      */
     public boolean printErrors()
+    {
+        return printErrors;
+    }
+    // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="Print requests">
+    private final boolean printRequests;
+    /**
+     * Get if the server has to print requests.
+     * 
+     * @return boolean
+     */
+    public boolean printRequests()
     {
         return printErrors;
     }

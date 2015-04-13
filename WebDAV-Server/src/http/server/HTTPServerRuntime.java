@@ -63,17 +63,23 @@ public class HTTPServerRuntime implements Runnable
                         socket.setSoTimeout(environment.getServerSettings().getTimeout() * 1000);
 
                         nbInput = in.read(inputBuffer, 0, inputBuffer.length);
-                        read += nbInput;
-                        buffers.add(Arrays.copyOf(inputBuffer, nbInput));
-
+                        if(nbInput > 0)
+                        {
+                            read += nbInput;
+                            buffers.add(Arrays.copyOf(inputBuffer, nbInput));
+                        }
+                        
                         socket.setSoTimeout(FULL_REQUEST_TIMEOUT);
                         try
                         {
                             while(read <= maxBufferSize)
                             {
                                 nbInput = in.read(inputBuffer, 0, inputBuffer.length);
-                                read += nbInput;
-                                buffers.add(Arrays.copyOf(inputBuffer, nbInput));
+                                if(nbInput > 0)
+                                {
+                                    read += nbInput;
+                                    buffers.add(Arrays.copyOf(inputBuffer, nbInput));
+                                }
                             }
                         }
                         catch (Exception ex)
@@ -90,12 +96,15 @@ public class HTTPServerRuntime implements Runnable
                         index += buff.length;
                     }
 
-                    System.out.println("*************************");
-                    if(firstTime)
-                        System.out.println(new String(input, "UTF-8"));
-                    else
-                        System.out.println("[CONTINUE...] : " + read);
-                    System.out.println("*************************");
+                    if(environment.getServerSettings().printRequests())
+                    {
+                        System.out.println("*************************");
+                        if(firstTime)
+                            System.out.println(new String(input, "UTF-8"));
+                        else
+                            System.out.println("[CONTINUE...] : " + read);
+                        System.out.println("*************************");
+                    }
                     
                     if(!firstTime && cmd != null || firstTime)
                     {

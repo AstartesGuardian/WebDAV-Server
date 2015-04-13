@@ -16,7 +16,7 @@ public class WD_Lock extends HTTPCommand
     @Override
     public HTTPMessage Compute(HTTPMessage input, HTTPEnvironment environment) 
     {
-        String resource = input.getPath();
+        String resource = input.getPurePath();
         
         String content = new String(input.getContent());
         
