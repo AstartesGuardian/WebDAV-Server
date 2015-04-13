@@ -1,7 +1,6 @@
 package webdav.server.localCrypted;
 
 import http.server.HTTPAuthentication;
-import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.file.Files;
 import java.nio.file.StandardOpenOption;
@@ -26,14 +25,40 @@ public class LocalCryptedResource extends StandardResource
         return crypter;
     }
     
+    @Override
+    public boolean isVisible()
+    {
+        if(isDirectory())
+            return true;
+        else
+        {
+            if(file.isHidden())
+                return false;
+            
+            try
+            {
+                byte[] allData = Files.readAllBytes(file.toPath());
+                
+                int l = getLen(allData, 8);
+                byte[] cdata = new byte[l];
+                
+                System.arraycopy(allData, 8 + 4, cdata, 0, l);
+                
+                return getCrypter().decrypt(cdata).length > 0;
+            }
+            catch (Throwable ex)
+            {
+                return false;
+            }
+        }
+    }
+    
     private void updateSize(long size)
     {
-        try
+        try (RandomAccessFile f = new RandomAccessFile(file, "rw"))
         {
-            RandomAccessFile f = new RandomAccessFile(file, "rw");
             f.seek(0);
             f.write(toBytes(size));
-            f.close();
         }
         catch (Exception ex)
         { }
@@ -42,32 +67,27 @@ public class LocalCryptedResource extends StandardResource
     @Override
     public long getSize()
     {
-        try
+        byte[] data = new byte[8];
+        try (RandomAccessFile f = new RandomAccessFile(file, "rw"))
         {
-            RandomAccessFile f = new RandomAccessFile(file, "rw");
             f.seek(0);
-            byte[] data = new byte[8];
             if(f.read(data, 0, 8) != 8)
-            {
-                f.close();
                 return 0;
-            }
-            f.close();
-            
-            long len = toLong(data);
-            if(len == 0)
-            {
-                len = getContent().length;
-                if(len > 0)
-                    updateSize(len);
-            }
-            
-            return len;
         }
         catch (Exception ex)
         {
             return 0;
         }
+        
+        long len = toLong(data);
+        if(len == 0)
+        {
+            len = getContent().length;
+            if(len > 0)
+                updateSize(len);
+        }
+
+        return len;
     }
     
     @Override
@@ -75,6 +95,7 @@ public class LocalCryptedResource extends StandardResource
     {
         return Stream.of(file.listFiles())
                 .map(f -> new LocalCryptedResource(f.getPath(), getCrypter()))
+                .filter(f -> f.isVisible())
                 .toArray(IResource[]::new);
     }
 
@@ -101,7 +122,6 @@ public class LocalCryptedResource extends StandardResource
                 byte[] d = getCrypter().decrypt(temp);
                 data.add(d);
                 
-                System.out.println("S : " + d.length);
                 totalSize += d.length;
                 ptr += tempSize;
             } while(ptr < cryptedContent.length);
@@ -116,7 +136,7 @@ public class LocalCryptedResource extends StandardResource
             
             return decryptedContent;
         }
-        catch (Exception ex)
+        catch (Throwable ex)
         {
             return new byte[0];
         }

@@ -1,12 +1,18 @@
 package webdav.server;
 
 import http.server.HTTPAuthentication;
-import http.server.HTTPAuthenticationManager;
 import java.nio.file.attribute.FileTime;
 import java.util.Date;
 
 public interface IResource
 {
+    /**
+     * Get if the resource is visible.
+     * 
+     * @return boolean
+     */
+    public boolean isVisible();
+    
     /**
      * Get if the resource is a file.
      * 

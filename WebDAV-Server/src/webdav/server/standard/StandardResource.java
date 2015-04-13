@@ -37,6 +37,11 @@ public class StandardResource implements IResource
         return fa;
     }
     
+    @Override
+    public boolean isVisible()
+    {
+        return !file.isHidden();
+    }
 
     @Override
     public boolean isFile()
@@ -113,6 +118,7 @@ public class StandardResource implements IResource
     {
         return Stream.of(file.listFiles())
                 .map(f -> new StandardResource(f.getPath()))
+                .filter(f -> f.isVisible())
                 .toArray(IResource[]::new);
     }
 

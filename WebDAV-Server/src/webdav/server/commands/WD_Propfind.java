@@ -113,23 +113,20 @@ public class WD_Propfind extends HTTPCommand
         IResource f = getResource(input.getPath(), environment);
         
         if(!f.exists())
-        {
-            System.out.println("[FILE] : "+f.getPath(environment.getRoot())+" NOT FOUND");
             return new HTTPMessage(404, "Not found");
-        }
+        
         content.append(getInfo(f, host, environment));
         
         if(input.getHeader("depth").trim().equals("0"))
-        { // d = 0
+        { // depth = 0
         }
         else
-        { // d = 1
+        { // depth = 1
             for(IResource subFile : f.listResources())
                 content.append(getInfo(subFile, host, environment));
         }
         
         content.append("</D:multistatus>");
-        System.out.println(content.toString());
         
         HTTPMessage msg = new HTTPMessage(207, "Multi-Status");
         msg.setHeader("Content-Type", "text/xml; charset=\"utf-8\"");
