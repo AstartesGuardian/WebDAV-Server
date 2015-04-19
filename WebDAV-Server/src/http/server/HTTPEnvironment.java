@@ -1,8 +1,12 @@
 package http.server;
 
+import http.server.authentication.HTTPUser;
+import http.server.authentication.HTTPAuthenticationManager;
 import org.omg.CORBA.Environment;
 import webdav.server.IResource;
 import webdav.server.IResourceManager;
+import http.server.exceptions.NotFoundException;
+import http.server.exceptions.UserRequiredException;
 
 public class HTTPEnvironment
 {
@@ -11,12 +15,11 @@ public class HTTPEnvironment
     {
         this.serverSettings = serverSettings;
         this.root = root;
+        this.resourceManager = serverSettings.getResourceManager();
     }
     public HTTPEnvironment(HTTPEnvironment parent)
     {
         this(parent.serverSettings, parent.root);
-        
-        this.iResourceManager = serverSettings.generateResourceManager();
     }
     // </editor-fold>
     
@@ -36,18 +39,30 @@ public class HTTPEnvironment
     }
     // </editor-fold>
     
+    // <editor-fold defaultstate="collapsed" desc="User">
+    private HTTPUser user = null;
+    public HTTPUser getUser()
+    {
+        return user;
+    }
+    public void setUser(HTTPUser user)
+    {
+        this.user = user;
+    }
+    // </editor-fold>
+    
     // <editor-fold defaultstate="collapsed" desc="Resource manager">
-    private IResourceManager iResourceManager;
+    private final IResourceManager resourceManager;
     public IResourceManager getResourceManager()
     {
-        return iResourceManager;
+        return resourceManager;
     }
     // </editor-fold>
     
     // <editor-fold defaultstate="collapsed" desc="Shortcuts">
-    public IResource createFromPath(String path)
+    public IResource getResourceFromPath(String path) throws UserRequiredException, NotFoundException
     {
-        return getResourceManager().createFromPath(path);
+        return getResourceManager().getResource(path, getUser());
     }
     // </editor-fold>
 

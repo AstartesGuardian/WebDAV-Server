@@ -1,133 +1,126 @@
 package webdav.server;
 
-import http.server.HTTPAuthentication;
-import java.nio.file.attribute.FileTime;
-import java.util.Date;
+import http.server.authentication.HTTPUser;
+import http.server.exceptions.UserRequiredException;
+import java.time.Instant;
 
 public interface IResource
 {
     /**
      * Get if the resource is visible.
      * 
+     * @param user
      * @return boolean
+     * @throws http.server.exceptions.UserRequiredException
      */
-    public boolean isVisible();
+    public boolean isVisible(HTTPUser user) throws UserRequiredException;
     
     /**
-     * Get if the resource is a file.
+     * Get the type of the resource.
      * 
-     * @return boolean
+     * @param user
+     * @return ResourceType
+     * @throws http.server.exceptions.UserRequiredException
      */
-    public boolean isFile();
-    
-    /**
-     * Get if the resource is a directory.
-     * 
-     * @return boolean
-     */
-    public boolean isDirectory();
+    public ResourceType getResourceType(HTTPUser user) throws UserRequiredException;
     
     /**
      * Get the web name of the resource.
      * 
+     * @param user
      * @return String
+     * @throws http.server.exceptions.UserRequiredException
      */
-    public String getWebName();
+    public String getWebName(HTTPUser user) throws UserRequiredException;
     /**
      * Get the resource name.
      * 
-     * @param start String to remove at the beginning of the path
+     * @param user
      * @return String
+     * @throws http.server.exceptions.UserRequiredException
      */
-    public String getPath(String start);
+    public String getPath(HTTPUser user) throws UserRequiredException;
     /**
      * Get the mime type of the resource.
      * 
+     * @param user
      * @return String
+     * @throws http.server.exceptions.UserRequiredException
      */
-    public String getMimeType();
+    public String getMimeType(HTTPUser user) throws UserRequiredException;
     /**
      * Get the size of the resource (byte).
      * 
+     * @param user
      * @return long
+     * @throws http.server.exceptions.UserRequiredException
      */
-    public long getSize();
+    public long getSize(HTTPUser user) throws UserRequiredException;
     /**
      * Get the creation time.
      * 
-     * @return FileTime
+     * @param user
+     * @return Instant
+     * @throws http.server.exceptions.UserRequiredException
      */
-    public FileTime getCreationTime();
+    public Instant getCreationTime(HTTPUser user) throws UserRequiredException;
     /**
      * Get the last modified date.
      * 
-     * @return Date
+     * @param user
+     * @return Instant
+     * @throws http.server.exceptions.UserRequiredException
      */
-    public Date getLastModified();
+    public Instant getLastModified(HTTPUser user) throws UserRequiredException;
     /**
      * Get the list of the resources contained in this resource.
      * 
+     * @param user
      * @return IResource[]
+     * @throws http.server.exceptions.UserRequiredException
      */
-    public IResource[] listResources();
-    /**
-     * Get if the resource exists.
-     * 
-     * @return boolean
-     */
-    public boolean exists();
+    public IResource[] listResources(HTTPUser user) throws UserRequiredException;
     
     /**
      * Get the content of the resource.
      * 
+     * @param user
      * @return byte[]
+     * @throws http.server.exceptions.UserRequiredException
      */
-    public byte[] getContent();
+    public byte[] getContent(HTTPUser user) throws UserRequiredException;
     /**
      * Set the content of the resource.
      * 
      * @param content Content to put in the resource
+     * @param user
+     * @throws http.server.exceptions.UserRequiredException
      */
-    public void setContent(byte[] content);
+    public void setContent(byte[] content, HTTPUser user) throws UserRequiredException;
     /**
      * Append a content to the resource.
      * 
      * @param content Content to append in the resource
+     * @param user
+     * @throws http.server.exceptions.UserRequiredException
      */
-    public void appendContent(byte[] content);
+    public void appendContent(byte[] content, HTTPUser user) throws UserRequiredException;
     
     /**
      * Delete the resource.
      * 
+     * @param user
      * @return boolean
+     * @throws http.server.exceptions.UserRequiredException
      */
-    public boolean delete();
+    public boolean delete(HTTPUser user) throws UserRequiredException;
     /**
      * Rename or move a resource from the current path to 'resource' path.
      * 
-     * @param resource Path to move/rename to.
+     * @param newPath
+     * @param user
      * @return boolean
+     * @throws http.server.exceptions.UserRequiredException
      */
-    public boolean renameTo(IResource resource);
-    /**
-     * Create the resource as a directory.
-     * 
-     * @return boolean
-     */
-    public boolean createDirectory();
-    /**
-     * Create the resource as a file.
-     * 
-     * @return boolean
-     */
-    public boolean createFile();
-    
-    /**
-     * Get if the resource needs an authentification to be accessed.
-     * If the current authentification is not enough, returns true.
-     * 
-     * @param user User (null if no user authentified)
-     * @return boolean
-     */
-    public boolean needsAuthentification(HTTPAuthentication user);
+    public boolean moveTo(String newPath, HTTPUser user) throws UserRequiredException;
 }

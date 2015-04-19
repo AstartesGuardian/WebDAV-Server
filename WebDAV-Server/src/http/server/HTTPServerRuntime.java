@@ -1,15 +1,20 @@
 package http.server;
 
+import http.server.authentication.HTTPUser;
+import http.server.authentication.HTTPAuthenticationManager;
 import webdav.server.Helper;
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.IOException;
 import java.net.Socket;
+import java.net.SocketException;
 import java.net.SocketTimeoutException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
+import http.server.exceptions.NotFoundException;
+import http.server.exceptions.UserRequiredException;
 import webdav.server.commands.WD_Options;
 
 public class HTTPServerRuntime implements Runnable
@@ -39,8 +44,8 @@ public class HTTPServerRuntime implements Runnable
         try
         {
             HTTPAuthenticationManager userManager = environment.getAuthenticationManager();
-            final int maxBufferSize = environment.getResourceManager().getMaxBufferSize();
-            final int bufferStep = environment.getResourceManager().getStepBufferSize();
+            final int maxBufferSize = environment.getServerSettings().getMaxBufferSize();
+            final int bufferStep = environment.getServerSettings().getStepBufferSize();
             
             byte[] inputBuffer = new byte[bufferStep];
             int nbInput;
@@ -85,6 +90,7 @@ public class HTTPServerRuntime implements Runnable
                         catch (Exception ex)
                         {
                             finishedToRead = true;
+                            break;
                         }
                     } while(read == 0);
 
@@ -96,67 +102,85 @@ public class HTTPServerRuntime implements Runnable
                         index += buff.length;
                     }
 
-                    if(environment.getServerSettings().printRequests())
+                    if(environment.getServerSettings().getPrintRequests())
                     {
-                        System.out.println("*************************");
+                        System.out.println("***** REQUEST *****");
                         if(firstTime)
-                            System.out.println(new String(input, "UTF-8"));
+                            System.out.println(new String(input, 0, Math.min(input.length, 2000), "UTF-8"));
                         else
                             System.out.println("[CONTINUE...] : " + read);
-                        System.out.println("*************************");
+                        System.out.println("*** END REQUEST ***");
+                        System.out.println();
                     }
                     
                     if(!firstTime && cmd != null || firstTime)
                     {
-                        if(firstTime)
-                        { // First time
-                            inputMsg = new HTTPMessage(input, socket, environment.getServerSettings().getAllowedCommands());
+                        try
+                        {
+                            if(firstTime || cmd == null)
+                            { // First time
+                                inputMsg = new HTTPMessage(input, socket, environment.getServerSettings().getAllowedCommands());
 
-                            HTTPMessage outputMsg;
+                                HTTPUser user = null;
+                                if(userManager != null)
+                                {
+                                    user = userManager.checkAuth(inputMsg);
+                                    if(user != null)
+                                        environment.setUser(user);
+                                }
 
-                            HTTPAuthentication user = null;
-                            if(userManager != null)
-                                user = userManager.checkAuth(inputMsg);
+                                cmd = inputMsg.getCommand();
 
-                            environment.getResourceManager().setUser(user);
+                                HTTPMessage outputMsg = cmd.Compute(inputMsg, environment);
 
-                            if(userManager != null
-                                    && !new WD_Options().equals(inputMsg.getCommand())
-                                    && environment.createFromPath(inputMsg.getPath()).needsAuthentification(user))
-                            {
-                                outputMsg = new HTTPMessage(401, "Unauthorized");
-                                outputMsg.setHeader("WWW-Authenticate", "Digest realm=\"" + userManager.getRealm() + "\", qop=\"auth,auth-int\", nonce=\"" + userManager.generateNonce() + "\", opaque=\"" + userManager.generateNonce() + "\"");
+                                outputMsg.setHeader("Server", environment.getServerSettings().getServer());
+                                outputMsg.setHeader("Date", Helper.toString(new Date()));
+                                outputMsg.setHeader("Keep-Alive", "timeout=" + environment.getServerSettings().getTimeout() + ", max=" + environment.getServerSettings().getMaxNbRequests());
+
+                                output = outputMsg.toBytes();
+                                firstTime = false;
                             }
                             else
-                            {
-                                cmd = inputMsg.getCommand();
-                                outputMsg = cmd.Compute(inputMsg, environment);
+                            { // Continue
+                                cmd.Continue(inputMsg, input, environment);
                             }
-
-
-                            outputMsg.setHeader("Server", environment.getServerSettings().getServer());
-                            outputMsg.setHeader("Date", Helper.toString(new Date()));
-                            outputMsg.setHeader("Keep-Alive", "timeout=" + environment.getServerSettings().getTimeout() + ", max=" + environment.getServerSettings().getMaxNbRequests());
-
-                            output = outputMsg.toBytes();
-                            firstTime = false;
                         }
-                        else
-                        { // Continue
-                            cmd.Continue(inputMsg, input, environment);
+                        catch(UserRequiredException ex)
+                        {
+                            HTTPMessage outputMsg = new HTTPMessage(401, "Unauthorized");
+                            outputMsg.setHeader("WWW-Authenticate", "Digest realm=\"" + userManager.getRealm() + "\", qop=\"auth,auth-int\", nonce=\"" + userManager.generateNonce() + "\", opaque=\"" + userManager.generateNonce() + "\"");
+                            
+                            output = outputMsg.toBytes();
+                        }
+                        catch(NotFoundException ex)
+                        {
+                            HTTPMessage outputMsg = new HTTPMessage(404, "Not found");
+                            
+                            output = outputMsg.toBytes();
                         }
                     }
                 } while(!finishedToRead);
                 
-                out.write(output, 0, output.length);
-                out.flush();
+                if(output != null)
+                {
+                    if(environment.getServerSettings().getPrintResponses())
+                    {
+                        System.out.println("***** RESPONSE *****");
+                        System.out.println(new String(output, 0, Math.min(output.length, 2000), "UTF-8"));
+                        System.out.println("*** END RESPONSE ***");
+                        System.out.println();
+                    }
+                    
+                    out.write(output, 0, output.length);
+                    out.flush();
+                }
             }
         }
-        catch (SocketTimeoutException ex)
+        catch (SocketTimeoutException | SocketException ex)
         { }
         catch (Exception ex)
         {
-            if(environment.getServerSettings().printErrors())
+            if(environment.getServerSettings().getPrintErrors())
                 ex.printStackTrace();
         }
         finally

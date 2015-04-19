@@ -1,9 +1,12 @@
 package webdav.server.commands;
 
+import http.server.authentication.HTTPUser;
 import http.server.HTTPCommand;
 import http.server.HTTPEnvironment;
 import http.server.HTTPMessage;
 import webdav.server.IResource;
+import http.server.exceptions.NotFoundException;
+import http.server.exceptions.UserRequiredException;
 
 public class WD_Head extends HTTPCommand
 {
@@ -13,15 +16,14 @@ public class WD_Head extends HTTPCommand
     }
     
     @Override
-    public HTTPMessage Compute(HTTPMessage input, HTTPEnvironment environment) 
+    public HTTPMessage Compute(HTTPMessage input, HTTPEnvironment environment) throws UserRequiredException, NotFoundException 
     {
+        HTTPUser user = environment.getUser();
+        
         IResource f = getResource(input.getPath(), environment);
         
-        if(!f.exists())
-            return new HTTPMessage(404, "Not found");
-        
         HTTPMessage msg = new HTTPMessage(200, "OK");
-        msg.setHeader("Content-Length", String.valueOf(f.getSize()));
+        msg.setHeader("Content-Length", String.valueOf(f.getSize(user)));
         msg.setHeader("Content-Type", "text/xml; charset=\"utf-8\"");
         return msg;
     }

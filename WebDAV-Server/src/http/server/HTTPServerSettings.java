@@ -1,23 +1,45 @@
 package http.server;
 
+import http.server.authentication.HTTPAuthenticationManager;
+import http.server.authentication.HTTPDefaultAuthentication;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
 import webdav.server.IResourceManager;
-import webdav.server.standard.StandardResourceManager;
 
 public class HTTPServerSettings
 {
+    public HTTPServerSettings()
+    {
+        this.setAllowedCommands(HTTPCommand.getStandardCommands());
+        this.setAuthenticationManager(null);
+        this.setHTTPVersion(httpVersion);
+        this.setMaxBufferSize(maxBufferSize);
+        this.setMaxNbRequests(maxNbRequests);
+        this.setPrintErrors(true);
+        this.setPrintRequests(true);
+        this.setResourceManager(null);
+        this.setRoot(null);
+        this.setServer(null);
+        this.setStepBufferSize(stepBufferSize);
+        this.setTimeout(timeout);
+        this.setUseResourceBuffer(true);
+    }
+    
+    
     // <editor-fold defaultstate="collapsed" desc="Constructor(s)">
-    public HTTPServerSettings(
+    /*public HTTPServerSettings(
             String serverName,
             HTTPCommand[] cmds,
-            Class iResourceManager,
+            IResourceManager resourceManager,
             String root,
             int timeout,
             int maxNbRequests,
             HTTPAuthenticationManager authenticationManager,
             boolean printErrors,
-            boolean printRequests)
+            boolean printRequests,
+            boolean useResourceBuffer)
     {
         this.timeout = timeout;
         this.maxNbRequests = maxNbRequests;
@@ -30,37 +52,42 @@ public class HTTPServerSettings
             addAllowedCommand(c);
         
         this.root = root;
-        this.iResourceManager = iResourceManager;
+        this.resourceManager = resourceManager;
         this.printErrors = printErrors;
         this.printRequests = printRequests;
+        this.useResourceBuffer = useResourceBuffer;
     }
-    public HTTPServerSettings(String serverName, HTTPCommand[] cmds, Class iResourceManager, String root, int timeout, int maxNbRequests, HTTPAuthenticationManager authenticationManager, boolean printErrors)
+    public HTTPServerSettings(String serverName, HTTPCommand[] cmds, IResourceManager resourceManager, String root, int timeout, int maxNbRequests, HTTPAuthenticationManager authenticationManager, boolean printErrors, boolean printRequests)
     {
-        this(serverName, cmds, iResourceManager, root, timeout, maxNbRequests, authenticationManager, printErrors, false);
+        this(serverName, cmds, resourceManager, root, timeout, maxNbRequests, authenticationManager, printErrors, printRequests, true);
     }
-    public HTTPServerSettings(String serverName, HTTPCommand[] cmds, Class iResourceManager, String root, int timeout, int maxNbRequests, HTTPAuthenticationManager authenticationManager)
+    public HTTPServerSettings(String serverName, HTTPCommand[] cmds, IResourceManager resourceManager, String root, int timeout, int maxNbRequests, HTTPAuthenticationManager authenticationManager, boolean printErrors)
     {
-        this(serverName, cmds, iResourceManager, root, timeout, maxNbRequests, authenticationManager, false);
+        this(serverName, cmds, resourceManager, root, timeout, maxNbRequests, authenticationManager, printErrors, false);
     }
-    public HTTPServerSettings(String serverName, HTTPCommand[] cmds, Class iResourceManager, String root, int timeout, int maxNbRequests)
+    public HTTPServerSettings(String serverName, HTTPCommand[] cmds, IResourceManager resourceManager, String root, int timeout, int maxNbRequests, HTTPAuthenticationManager authenticationManager)
     {
-        this(serverName, cmds, iResourceManager, root, timeout, maxNbRequests, null);
+        this(serverName, cmds, resourceManager, root, timeout, maxNbRequests, authenticationManager, false);
     }
-    public HTTPServerSettings(String serverName, HTTPCommand[] cmds, Class iResourceManager, String root, int timeout)
+    public HTTPServerSettings(String serverName, HTTPCommand[] cmds, IResourceManager resourceManager, String root, int timeout, int maxNbRequests)
     {
-        this(serverName, cmds, iResourceManager, root, timeout, 100);
+        this(serverName, cmds, resourceManager, root, timeout, maxNbRequests, null);
     }
-    public HTTPServerSettings(String serverName, HTTPCommand[] cmds, Class iResourceManager, String root)
+    public HTTPServerSettings(String serverName, HTTPCommand[] cmds, IResourceManager resourceManager, String root, int timeout)
     {
-        this(serverName, cmds, iResourceManager, root, 5);
+        this(serverName, cmds, resourceManager, root, timeout, 100);
     }
-    public HTTPServerSettings(String serverName, HTTPCommand[] cmds, Class iResourceManager)
+    public HTTPServerSettings(String serverName, HTTPCommand[] cmds, IResourceManager resourceManager, String root)
     {
-        this(serverName, cmds, iResourceManager, "");
+        this(serverName, cmds, resourceManager, root, 5);
+    }
+    public HTTPServerSettings(String serverName, HTTPCommand[] cmds, IResourceManager resourceManager)
+    {
+        this(serverName, cmds, resourceManager, "");
     }
     public HTTPServerSettings(String serverName, HTTPCommand[] cmds)
     {
-        this(serverName, cmds, StandardResourceManager.class);
+        this(serverName, cmds, new VirtualResourceManager(new VirtualManager()));
     }
     public HTTPServerSettings(String serverName)
     {
@@ -69,11 +96,11 @@ public class HTTPServerSettings
     public HTTPServerSettings()
     {
         this("WebDav Server");
-    }
+    }*/
     // </editor-fold>
     
     // <editor-fold defaultstate="collapsed" desc="Root">
-    private final String root;
+    private String root;
     /**
      * Get the root string to add on the begining of every path.
      * 
@@ -83,30 +110,32 @@ public class HTTPServerSettings
     {
         return root;
     }
+    public void setRoot(String root)
+    {
+        this.root = root;
+    }
     // </editor-fold>
     
     // <editor-fold defaultstate="collapsed" desc="IResourceManager::new">
-    private final Class iResourceManager;
+    private IResourceManager resourceManager;
     /**
      * Generate a file manager from 'iResourceManager' specified in the 
      * HTTPServerSettings constructor.
      * 
      * @return IResourceManager
      */
-    public IResourceManager generateResourceManager()
+    public IResourceManager getResourceManager()
     {
-        try
-        {
-            return (IResourceManager)iResourceManager.newInstance();
-        } catch (Exception ex)
-        {
-            return null;
-        }
+        return resourceManager;
+    }
+    public void setResourceManager(IResourceManager resourceManager)
+    {
+        this.resourceManager = resourceManager;
     }
     // </editor-fold>
     
     // <editor-fold defaultstate="collapsed" desc="Timeout">
-    protected final int timeout;
+    protected int timeout;
     /**
      * Get the timeout in seconds.
      * 
@@ -115,6 +144,10 @@ public class HTTPServerSettings
     public int getTimeout()
     {
         return timeout;
+    }
+    public void setTimeout(int timeout)
+    {
+        this.timeout = timeout;
     }
     // </editor-fold>
     
@@ -129,6 +162,10 @@ public class HTTPServerSettings
     {
         return server;
     }
+    public void setServer(String server)
+    {
+        this.server = server;
+    }
     // </editor-fold>
     
     // <editor-fold defaultstate="collapsed" desc="HTTP Version">
@@ -142,10 +179,14 @@ public class HTTPServerSettings
     {
         return httpVersion;
     }
+    public void setHTTPVersion(double httpVersion)
+    {
+        this.httpVersion = httpVersion;
+    }
     // </editor-fold>
     
     // <editor-fold defaultstate="collapsed" desc="Allowed commands">
-    protected final Set<HTTPCommand> allowedCommands;
+    protected Set<HTTPCommand> allowedCommands;
     /**
      * Get the allowed commands.
      * 
@@ -154,6 +195,14 @@ public class HTTPServerSettings
     public final Set<HTTPCommand> getAllowedCommands()
     {
         return allowedCommands;
+    }
+    public final void setAllowedCommands(HTTPCommand[] commands)
+    {
+        setAllowedCommands(Arrays.asList(commands));
+    }
+    public final void setAllowedCommands(Collection<HTTPCommand> commands)
+    {
+        allowedCommands = new HashSet<>(commands);
     }
     /**
      * Add an allowed command.
@@ -176,7 +225,7 @@ public class HTTPServerSettings
     // </editor-fold>
 
     // <editor-fold defaultstate="collapsed" desc="MaxNbRequests">
-    protected final int maxNbRequests;
+    protected int maxNbRequests;
     /**
      * Get the maximum number of requests by TCP connection.
      * 
@@ -186,10 +235,15 @@ public class HTTPServerSettings
     {
         return maxNbRequests;
     }
+    public void setMaxNbRequests(int maxNbRequests)
+    {
+        this.maxNbRequests = maxNbRequests;
+    }
     // </editor-fold>
     
     // <editor-fold defaultstate="collapsed" desc="Authentication Manager">
-    protected final HTTPAuthenticationManager authenticationManager;
+    protected HTTPAuthenticationManager authenticationManager = null;
+    protected HTTPAuthenticationManager defaultAuthenticationManager = null;
     /**
      * Get the authentication manager to use.
      * 
@@ -197,34 +251,110 @@ public class HTTPServerSettings
      */
     public HTTPAuthenticationManager getAuthenticationManager()
     {
+        if(authenticationManager == null)
+        {
+            if(defaultAuthenticationManager == null)
+                defaultAuthenticationManager = new HTTPDefaultAuthentication("WebDAV Server Realm");
+            authenticationManager = defaultAuthenticationManager;
+        }
         return authenticationManager;
+    }
+    public void setAuthenticationManager(HTTPAuthenticationManager authenticationManager)
+    {
+        this.authenticationManager = authenticationManager;
     }
     // </editor-fold>
 
     
     // <editor-fold defaultstate="collapsed" desc="Print errors">
-    private final boolean printErrors;
+    private boolean printErrors;
     /**
      * Get if the server has to print errors.
      * 
      * @return boolean
      */
-    public boolean printErrors()
+    public boolean getPrintErrors()
     {
         return printErrors;
+    }
+    public void setPrintErrors(boolean printErrors)
+    {
+        this.printErrors = printErrors;
     }
     // </editor-fold>
 
     // <editor-fold defaultstate="collapsed" desc="Print requests">
-    private final boolean printRequests;
+    private boolean printRequests;
     /**
      * Get if the server has to print requests.
      * 
      * @return boolean
      */
-    public boolean printRequests()
+    public boolean getPrintRequests()
     {
-        return printErrors;
+        return printRequests;
+    }
+    public void setPrintRequests(boolean printRequests)
+    {
+        this.printRequests = printRequests;
     }
     // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="Print Responses">
+    private boolean printResponses;
+    /**
+     * Get if the server has to print requests.
+     * 
+     * @return boolean
+     */
+    public boolean getPrintResponses()
+    {
+        return printResponses;
+    }
+    public void setPrintResponses(boolean printResponses)
+    {
+        this.printResponses = printResponses;
+    }
+    // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="Use resource buffer">
+    private boolean useResourceBuffer;
+    /**
+     * Get if the server has to use a resource buffer.
+     * With certain kind of resource types, the resource buffer can be a
+     * problem (example : a resource type that don't check everytime if the
+     * resource exists).
+     * 
+     * @return boolean
+     */
+    public boolean getUseResourceBuffer()
+    {
+        return useResourceBuffer;
+    }
+    public void setUseResourceBuffer(boolean useResourceBuffer)
+    {
+        this.useResourceBuffer = useResourceBuffer;
+    }
+    // </editor-fold>
+
+    
+    private int maxBufferSize;
+    public int getMaxBufferSize()
+    {
+        return maxBufferSize;
+    }
+    public void setMaxBufferSize(int maxBufferSize)
+    {
+        this.maxBufferSize = maxBufferSize;
+    }
+
+    private int stepBufferSize;
+    public int getStepBufferSize()
+    {
+        return stepBufferSize;
+    }
+    public void setStepBufferSize(int stepBufferSize)
+    {
+        this.stepBufferSize = stepBufferSize;
+    }
 }

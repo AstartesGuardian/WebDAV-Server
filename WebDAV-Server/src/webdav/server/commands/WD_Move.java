@@ -1,10 +1,13 @@
 package webdav.server.commands;
 
+import http.server.authentication.HTTPUser;
 import http.server.HTTPCommand;
 import http.server.HTTPEnvironment;
 import http.server.HTTPMessage;
+import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
-import webdav.server.IResource;
+import http.server.exceptions.NotFoundException;
+import http.server.exceptions.UserRequiredException;
 
 public class WD_Move extends HTTPCommand
 {
@@ -14,24 +17,20 @@ public class WD_Move extends HTTPCommand
     }
     
     @Override
-    public HTTPMessage Compute(HTTPMessage input, HTTPEnvironment environment) 
+    public HTTPMessage Compute(HTTPMessage input, HTTPEnvironment environment) throws UserRequiredException, NotFoundException 
     {
         try
         {
+            HTTPUser user = environment.getUser();
+        
             String dest = input.getHeader("destination");
             String host = input.getHeader("host");
             String shortDest = URLDecoder.decode(dest.substring(dest.indexOf(host) + host.length()), "UTF-8");
 
-            IResource fsrc = getResource(input.getPath(), environment);
-            
-            if(!fsrc.exists())
-                return new HTTPMessage(404, "Not found");
-            
-            IResource fdest = getResource(shortDest, environment);
-            
-            fsrc.renameTo(fdest);
+            getResource(input.getPath(), environment)
+                    .moveTo(getPath(shortDest, environment), user);
         }
-        catch (Exception ex)
+        catch (UnsupportedEncodingException ex)
         { }
         
         HTTPMessage msg = new HTTPMessage(201, "Created");

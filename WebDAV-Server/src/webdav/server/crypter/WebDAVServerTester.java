@@ -1,8 +1,5 @@
-package webdav.server.localCrypted;
+package webdav.server.crypter;
 
-import http.server.HTTPCommand;
-import http.server.HTTPServer;
-import http.server.HTTPServerSettings;
 import java.io.IOException;
 
 public class WebDAVServerTester implements Runnable
@@ -14,7 +11,7 @@ public class WebDAVServerTester implements Runnable
 
     @Override
     public void run()
-    {
+    {/*
         LocalCryptedResourceManager.setAlgorithm(ICrypter.Algorithm.AES_CBC_PKCS5Padding);
         
         HTTPServerSettings settings = new HTTPServerSettings("WebDAV Server (Windows 8.1)",
@@ -28,6 +25,6 @@ public class WebDAVServerTester implements Runnable
         
         HTTPServer s = new HTTPServer(1702, settings, false, true);
         
-        s.run();
+        s.run();*/
     }
 }

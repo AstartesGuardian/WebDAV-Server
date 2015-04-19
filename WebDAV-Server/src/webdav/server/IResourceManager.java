@@ -1,27 +1,12 @@
 package webdav.server;
 
-import http.server.HTTPAuthentication;
+import http.server.exceptions.UserRequiredException;
+import http.server.exceptions.NotFoundException;
+import http.server.authentication.HTTPUser;
 
 public interface IResourceManager
 {
-    /**
-     * Create a IResource instance from 'path' to be used in different commands 
-     * of the server.
-     * 
-     * @param path Path of the resource
-     * @return The generated resource
-     */
-    public IResource createFromPath(String path);
-    
-    public int getMaxBufferSize();
-    public int getStepBufferSize();
-    
-    
-    /**
-     * Define the user for the current session. Useful for managers using the
-     * information of the users.
-     * 
-     * @param user User authenticated in the current session
-     */
-    public void setUser(HTTPAuthentication user);
+    public IResource getResource(String path, HTTPUser user) throws UserRequiredException, NotFoundException;
+    public IResource createFile(String path, HTTPUser user) throws UserRequiredException;
+    public IResource createDirectory(String path, HTTPUser user) throws UserRequiredException;
 }

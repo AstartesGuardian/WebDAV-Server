@@ -1,4 +1,4 @@
-package webdav.server.localCrypted;
+package webdav.server.crypter;
 
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;

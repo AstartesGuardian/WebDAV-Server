@@ -1,4 +1,4 @@
-package webdav.server.localCrypted;
+package webdav.server.crypter;
 
 import java.io.UnsupportedEncodingException;
 import java.security.MessageDigest;
