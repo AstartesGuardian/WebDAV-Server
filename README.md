@@ -39,9 +39,9 @@ WebDAV over HTTP - Server - Modular
 <br>
 Wiki : https://github.com/AstartesGuardian/WebDAV-Server/wiki
 
-<br><hr><h2><b>Fast code information</b></h2>
+<br><hr><h2><b>Quick code information</b></h2>
 
-<h4>Fast use of a standard WebDAV server :</h4>
+<h4>Quick use of a standard WebDAV server :</h4>
 ```java
 VirtualManager vm;
 try
@@ -78,7 +78,7 @@ HTTPServer s = new HTTPServer(1700, settings, false, true);
 s.run();
 ```
 <br>
-<h4>Fast use of a crypted WebDAV server :</h4>
+<h4>Quick use of a crypted WebDAV server :</h4>
 ```java
 VirtualManager vm;
 try
