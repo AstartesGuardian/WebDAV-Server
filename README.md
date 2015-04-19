@@ -43,69 +43,122 @@ Wiki : https://github.com/AstartesGuardian/WebDAV-Server/wiki
 
 <h4>Fast use of a standard WebDAV server :</h4>
 ```java
-HTTPServerSettings settings = new HTTPServerSettings(
-  "WebDAV Server",
-  HTTPCommand.getStandardCommands(),
-  StandardResourceManager.class,
-  "<my folder>"
-);
+VirtualManager vm;
+try
+{
+	vm = VirtualManager.load(new File("data.vm"));
+}
+catch (Exception ex)
+{
+	vm = new VirtualManager();
+	VDirectory dir = new VDirectory(vm.getRoot(), "public");
+}
 
-HTTPServer s = new HTTPServer(1700, settings);
-s.run(); // Run the server
+vm.setRootDirectory(new File("D:\\Documents\\FTP_TEST"));
+vm.addContentManager("direct", new StandardContentManager());
+
+HTTPServerSettings settings = new HTTPServerSettings();
+settings.setAllowedCommands(HTTPCommand.getStandardCommands());
+settings.setAuthenticationManager(null);
+settings.setHTTPVersion(1.1);
+settings.setMaxNbRequests(100);
+settings.setPrintErrors(true);
+settings.setPrintRequests(true);
+settings.setPrintResponses(true);
+settings.setResourceManager(new VirtualResourceManager(vm));
+settings.setRoot("");
+settings.setServer("WebDAV Server");
+settings.setMaxBufferSize(1048576);
+settings.setStepBufferSize(5000);
+settings.setTimeout(5);
+settings.setUseResourceBuffer(false);
+
+
+HTTPServer s = new HTTPServer(1700, settings, false, true);
+s.run();
 ```
 <br>
 <h4>Fast use of a crypted WebDAV server :</h4>
 ```java
-LocalCryptedResourceManager.loadCipherCrypter(ICrypter.Algorithm.AES_ECB_PKCS5Padding);
-LocalCryptedResourceManager.setKey("<my password>");
+VirtualManager vm;
+try
+{
+    vm = VirtualManager.load(new File("data.vm"));
+}
+catch (Exception ex)
+{
+    vm = new VirtualManager();
+    VDirectory dir = new VDirectory(vm.getRoot(), "public");
+}
 
-HTTPServerSettings settings = new HTTPServerSettings(
-  "WebDAV Server",
-  HTTPCommand.getStandardCommands(),
-  LocalCryptedResourceManager.class,
-  "<my folder>"
-);
+vm.setRootDirectory(new File("D:\\Documents\\FTP_TEST"));
+// ****** Changed line ******
+vm.addContentManager("direct", new CryptedContentManager(ICrypter.Algorithm.AES_CBC_PKCS5Padding, "username", "password"));
+// **************************
 
-HTTPServer s = new HTTPServer(1700, settings);
-s.run(); // Run the server
+HTTPServerSettings settings = new HTTPServerSettings();
+settings.setAllowedCommands(HTTPCommand.getStandardCommands());
+settings.setAuthenticationManager(null);
+settings.setHTTPVersion(1.1);
+settings.setMaxNbRequests(100);
+settings.setPrintErrors(true);
+settings.setPrintRequests(true);
+settings.setPrintResponses(true);
+settings.setResourceManager(new VirtualResourceManager(vm));
+settings.setRoot("");
+settings.setServer("WebDAV Server");
+settings.setMaxBufferSize(1048576);
+settings.setStepBufferSize(5000);
+settings.setTimeout(5);
+settings.setUseResourceBuffer(false);
+
+
+HTTPServer s = new HTTPServer(1704, settings, false, true);
+s.run();
 ```
-It will crypt the file when received before writing it in its file.<br>
-It will decrypt the file before sending it to the requester.<br>
+It will crypt the content before writing them on the hard drive.<br>
+It will decrypt the content of the requested file before sending it to the requester.<br>
 This way, the user can synchronize the server with Windows and have a crypted folder which can be used as if it was not secured.<br>
 <br>
 HTTPServer class implements Runnable, so it can be used this way :
 ```java
-// ...
+// [...]
 HTTPServer s = new HTTPServer(1700, settings);
 new Thread(s).start(); // Create and run a thread containing the server
-// ...
+// [...]
 ```
 
 <br><hr><h2><b>More information</b></h2>
 
-The modular aspect of the project allow the one using this library to use a personal resource manager.<br>
-To do so, you just have to create two classes :<br>
+The modular aspect of the project allows the developer to change several things in the behavior of the server with the minimum of code to make.<br>
+Related classes of the modular aspect :<br>
 <table>
   <tr>
     <td><b>Interface name</b></td>
     <td><b>Description</b></td>
   </tr>
   <tr>
-    <td>IResourceManager</td>
-    <td>The class which will be used to create resources.</td>
+    <td>IResourceManager <br> VirtualResourceManager</td>
+    <td>Manage the search and the creation of resources (`getResource`, `createFile`, `createDirectory`).</td>
   </tr>
   <tr>
-    <td>IResource</td>
-    <td>Manage a specific resource.</td>
+    <td>VirtualManager</td>
+    <td>Input of the local database of resources (list of `IContentManager`, load/save functions, etc).</td>
+  </tr>
+  <tr>
+    <td>IContentManager <br> StandardContentManager <br> CryptedContentManager</td>
+    <td>Define how to read/write content relative to resources (`getContent`, `setContent`, `appendContent`).</td>
+  </tr>
+  <tr>
+    <td>IResource <br> VEntry <br> VFile <br> VDirectory <br> VLink</td>
+    <td>Provide the information relative to a resource (size, creation date, last modified date, etc).</td>
   </tr>
 </table>
 
 <br><hr><h2><b>Future</b></h2>
 
-* Virtual resources from XML file or a database
 * Remote resources (on a remote machine, with a secured transfer)
 * Wrap a FTP server to allow FTP servers to be used on Windows as a local folder (FTP servers can't be used as WebDAV servers can be on Windows)
-* Complet the lock system
 
 <br><hr><h2><b>References</b></h2>
 
