@@ -1,11 +1,12 @@
 package webdav.server.commands;
 
+import http.FileSystemPath;
 import http.server.authentication.HTTPUser;
 import http.server.HTTPCommand;
-import http.server.HTTPEnvironment;
-import http.server.HTTPMessage;
-import webdav.server.IResource;
+import http.server.message.HTTPResponse;
 import http.server.exceptions.UserRequiredException;
+import http.server.message.HTTPEnvRequest;
+import webdav.server.resource.ResourceType;
 
 public class WD_Mkcol extends HTTPCommand
 {
@@ -15,15 +16,17 @@ public class WD_Mkcol extends HTTPCommand
     }
     
     @Override
-    public HTTPMessage Compute(HTTPMessage input, HTTPEnvironment environment) throws UserRequiredException 
+    public HTTPResponse.Builder Compute(HTTPEnvRequest environment) throws UserRequiredException 
     {
-        HTTPUser user = environment.getUser();
+        FileSystemPath path = environment.getPath();
+        getResource(path.getParent(), environment)
+                .addChild(getResource(environment.getPath(), environment)
+                        .creates(ResourceType.Directory, environment)
+                        , environment);
         
-        environment.getResourceManager().createDirectory(getPath(input.getPath(), environment), user);
-        
-        HTTPMessage msg = new HTTPMessage(201, "Created");
-        msg.setHeader("Content-Type", "text/xml; charset=\"utf-8\"");
-        return msg;
+        return HTTPResponse.create()
+                .setCode(201)
+                .setMessage("Created");
     }
     
 }

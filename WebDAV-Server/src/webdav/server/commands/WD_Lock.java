@@ -1,26 +1,25 @@
 package webdav.server.commands;
 
-import http.server.authentication.HTTPUser;
+import http.FileSystemPath;
 import http.server.HTTPCommand;
-import http.server.HTTPEnvironment;
-import http.server.HTTPMessage;
-import java.io.ByteArrayInputStream;
+import http.server.message.HTTPMessage;
+import http.server.message.HTTPResponse;
 import java.io.IOException;
-import javax.xml.parsers.DocumentBuilder;
-import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.xml.sax.SAXException;
-import webdav.server.IResource;
-import webdav.server.Lock;
-import webdav.server.LockKind;
-import webdav.server.LockKind.LockScope;
-import webdav.server.LockKind.LockType;
-import webdav.server.NodeListWrap;
+import webdav.server.resource.IResource;
+import webdav.server.resource.Lock;
+import webdav.server.resource.LockKind;
+import webdav.server.resource.LockKind.LockScope;
+import webdav.server.resource.LockKind.LockType;
+import webdav.server.tools.NodeListWrap;
 import http.server.exceptions.NotFoundException;
 import http.server.exceptions.UserRequiredException;
-import webdav.server.virtual.entity.VEntity;
+import http.server.message.HTTPEnvRequest;
+import org.w3c.dom.Node;
+import webdav.server.resource.ResourceType;
 
 public class WD_Lock extends HTTPCommand
 {
@@ -39,28 +38,30 @@ public class WD_Lock extends HTTPCommand
             
             LockScope lockscope = NodeListWrap
                     .getStream(doc.getElementsByTagNameNS("*", "lockscope"))
-                    .filter(n -> n.hasChildNodes())
-                    .map(n -> n.getFirstChild().getLocalName())
-                    .map(t -> t.substring(0, 1).toUpperCase()+ t.substring(1).toLowerCase())
-                    .map(t -> LockScope.valueOf(t))
+                    .filter(Node::hasChildNodes)
+                    .map(Node::getFirstChild)
+                    .map(Node::getLocalName)
+                    .map(t -> t.substring(0, 1).toUpperCase() + t.substring(1).toLowerCase())
+                    .map(LockScope::valueOf)
                     .findFirst()
                     .orElse(null);
             
             LockType locktype = NodeListWrap
                     .getStream(doc.getElementsByTagNameNS("*", "locktype"))
-                    .filter(n -> n.hasChildNodes())
-                    .map(n -> n.getFirstChild().getLocalName())
-                    .map(t -> t.toLowerCase())
-                    .map(t -> LockType.valueOf(t))
+                    .filter(Node::hasChildNodes)
+                    .map(Node::getFirstChild)
+                    .map(Node::getLocalName)
+                    .map(String::toLowerCase)
+                    .map(LockType::valueOf)
                     .findFirst()
                     .orElse(null);
             
             String owner = NodeListWrap
                     .getStream(doc.getElementsByTagNameNS("*", "owner"))
-                    .filter(n -> n.hasChildNodes())
-                    .map(n -> n.getFirstChild())
+                    .filter(Node::hasChildNodes)
+                    .map(Node::getFirstChild)
                     .filter(n -> "href".equals(n.getLocalName().toLowerCase()))
-                    .map(n -> n.getTextContent())
+                    .map(Node::getTextContent)
                     .filter(t -> !t.trim().isEmpty())
                     .findFirst()
                     .orElse(null);
@@ -82,40 +83,33 @@ public class WD_Lock extends HTTPCommand
     }
     
     @Override
-    public HTTPMessage Compute(HTTPMessage input, HTTPEnvironment environment) throws NotFoundException, UserRequiredException
+    public HTTPResponse.Builder Compute(HTTPEnvRequest environment) throws NotFoundException, UserRequiredException
     {
-        IResource f;
-        String path = input.getPath();
-        HTTPUser user = environment.getUser();
+        FileSystemPath path = environment.getPath();
+        IResource resource = getResource(path, environment);
         
-        try
+        if(!resource.exists(environment))
         {
-            f = getResource(path, environment);
-        }
-        catch (NotFoundException ex)
-        {
-            f = environment.getResourceManager().createFile(path, user);
+            getResource(path.getParent(), environment)
+                    .addChild(resource.creates(ResourceType.File, environment), environment);
         }
         
-        if(!(f instanceof VEntity))
-            throw new NotFoundException();
-        VEntity entity = (VEntity)f;
-        
-        Lock lock = getRequestedLock(input);
+        Lock lock = getRequestedLock(environment.getRequest());
         
         if(lock == null)
             throw new NotFoundException();
         
         LockKind lockKind = lock.getLockKind();
         
-        if(!entity.canLock(lockKind, user))
+        if(!resource.canLock(lockKind, environment))
         {
-            HTTPMessage msg = new HTTPMessage(423, "Locked");
-            msg.setHeader("Content-Type", "text/xml; charset=\"utf-8\"");
-            return msg;
+            return HTTPResponse.create()
+                    .setCode(432)
+                    .setMessage("Locked")
+                    .setHeader("Content-Type", "text/xml; charset=\"utf-8\"");
         }
         
-        entity.setLock(lock, user);
+        resource.setLock(lock, environment);
         
         try
         {
@@ -158,7 +152,7 @@ public class WD_Lock extends HTTPCommand
             
             Element lockroot = doc.createElementNS("DAV:", "lockroot");
             value = doc.createElementNS("DAV:", "href");
-            value.setTextContent(input.getPurePath());
+            value.setTextContent(environment.getRequest().getPath());
             lockroot.appendChild(value);
             activelock.appendChild(lockroot);
             
@@ -175,11 +169,12 @@ public class WD_Lock extends HTTPCommand
             
             
             
-            HTTPMessage msg = new HTTPMessage(200, "OK");
-            msg.setHeader("Lock-Token", "<" + lock.getUUID() + ">");
-            msg.setHeader("Content-Type", "text/xml; charset=\"utf-8\"");
-            msg.setContent(NodeListWrap.getBytes(doc));
-            return msg;
+            return HTTPResponse.create()
+                    .setCode(200)
+                    .setMessage("OK")
+                    .setHeader("Lock-Token", "<" + lock.getUUID() + ">")
+                    .setHeader("Content-Type", "text/xml; charset=\"utf-8\"")
+                    .setContent(NodeListWrap.getBytes(doc));
         }
         catch (ParserConfigurationException ex)
         {

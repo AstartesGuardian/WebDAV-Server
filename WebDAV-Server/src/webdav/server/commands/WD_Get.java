@@ -2,12 +2,11 @@ package webdav.server.commands;
 
 import http.server.authentication.HTTPUser;
 import http.server.HTTPCommand;
-import http.server.HTTPEnvironment;
-import http.server.HTTPMessage;
-import webdav.server.IResource;
+import http.server.message.HTTPResponse;
+import webdav.server.resource.IResource;
 import http.server.exceptions.NotFoundException;
-import webdav.server.ResourceType;
 import http.server.exceptions.UserRequiredException;
+import http.server.message.HTTPEnvRequest;
 
 public class WD_Get extends HTTPCommand
 {
@@ -21,43 +20,50 @@ public class WD_Get extends HTTPCommand
     }
     
     @Override
-    public HTTPMessage Compute(HTTPMessage input, HTTPEnvironment environment) throws UserRequiredException, NotFoundException 
+    public HTTPResponse.Builder Compute(HTTPEnvRequest environment) throws UserRequiredException, NotFoundException 
     {
-        HTTPUser user = environment.getUser();
-        
-        IResource f = getResource(input.getPath(), environment);
+        try
+        {
+        IResource f = getResource(environment.getPath(), environment);
            
-        HTTPMessage msg = new HTTPMessage(200, "OK");
+        HTTPResponse.Builder builder = HTTPResponse.create()
+                .setCode(200)
+                .setMessage("OK");
         
-        ResourceType type = f.getResourceType(user);
-        switch(type)
+        switch(f.getResourceType(environment))
         {
             case File:
-                msg.setContent(f.getContent(user));
-                msg.setHeader("Content-Type", f.getMimeType(user));
+                builder.setContent(f.getContent(environment))
+                        .setHeader("Content-Type", f.getMimeType(environment));
                 break;
                 
             case Directory:
                 String content = "<?xml version=\"1.0\" encoding=\"UTF-8\"?><resources>";
 
-                for(IResource sf : f.listResources(user))
-                    switch(type)
+                for(IResource sf : f.listResources(environment))
+                    switch(sf.getResourceType(environment))
                     {
                         case File:
-                            content += "<directory>" + sf.getWebName(user) + "</directory>";
+                            content += "<directory>" + sf.getWebName(environment) + "</directory>";
                             break;
 
                         case Directory:
-                            content += "<file><name>" + sf.getWebName(user) + "</name><size>" + sf.getSize(user) + "</size><type>" + sf.getMimeType(user) + "</type></file>";
+                            content += "<file><name>" + sf.getWebName(environment) + "</name><size>" + sf.getSize(environment) + "</size><type>" + sf.getMimeType(environment) + "</type></file>";
                             break;
                     }
                 content += "</resources>";
 
-                msg.setContent(content);
+                builder.setContent(content);
                 break;
         }
         
-        return msg;
+        return builder;
+        }
+        catch(Exception ex)
+        {
+            ex.printStackTrace();
+            throw ex;
+        }
     }
     
 }

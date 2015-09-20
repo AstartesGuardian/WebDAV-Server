@@ -3,6 +3,8 @@ package http.server;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.net.SocketTimeoutException;
+import java.util.function.Supplier;
 import java.util.stream.Stream;
 import javax.net.ssl.SSLServerSocket;
 import javax.net.ssl.SSLServerSocketFactory;
@@ -15,46 +17,120 @@ public class HTTPServer implements Runnable
      * @param port Port to use
      * @param settings Settings of the server
      * @param useSSL Use ANON SSL/TLS
-     * @param scanIfNotAvailablePort Use port scan if the 'port' parameter can't be opened
+     * @param portAutoScan Use port scan if the 'port' parameter can't be opened
      */
-    public HTTPServer(int port, HTTPServerSettings settings, boolean useSSL, boolean scanIfNotAvailablePort)
+    public HTTPServer(
+            int port,
+            HTTPServerSettings settings,
+            boolean useSSL,
+            boolean portAutoScan,
+            Supplier<Boolean> continueRunning,
+            int checkForExitTime)
     {
         this.port = port;
         this.settings = settings;
-        this.scanIfNotAvailablePort = scanIfNotAvailablePort;
+        this.portAutoScan = portAutoScan;
         this.useSSL = useSSL;
+        this.continueRunning = continueRunning;
+        this.checkForExitTime = checkForExitTime;
+        
         this.server = null;
     }
-    /**
-     * Create a HTTP Server.
-     * 
-     * @param port Port to use
-     * @param settings Settings of the server
-     * @param useSSL Use ANON SSL/TLS
-     */
-    public HTTPServer(int port, HTTPServerSettings settings, boolean useSSL)
-    {
-        this(port, settings, useSSL, false);
-    }
-    /**
-     * Create a HTTP Server.
-     * 
-     * @param port Port to use
-     * @param settings Settings of the server
-     */
-    public HTTPServer(int port, HTTPServerSettings settings)
-    {
-        this(port, settings, false, false);
-    }
     
-    private final boolean scanIfNotAvailablePort;
+    // <editor-fold defaultstate="collapsed" desc="Properties">
+    private final boolean portAutoScan;
     private final boolean useSSL;
     private final int port;
     private final HTTPServerSettings settings;
+    private final Supplier<Boolean> continueRunning;
+    private final int checkForExitTime;
     
     private String[] cipherSuites = null;
     private SSLServerSocketFactory factory = null;
     private ServerSocket server;
+    // </editor-fold>
+    
+    
+    // <editor-fold defaultstate="collapsed" desc="Builder">
+    public static Builder create()
+    {
+        return new Builder();
+    }
+    public static class Builder
+    {
+        public Builder()
+        { }
+        
+        private boolean portAutoScan = false;
+        private boolean useSSL = false;
+        private int port = 2000;
+        private HTTPServerSettings settings = null;
+        private Supplier<Boolean> continueRunning = null;
+        private int checkForExitTime = -1;
+        
+        public Builder setPort(int port)
+        {
+            this.port = port;
+            return this;
+        }
+        public Builder setPortAutoScan(boolean portAutoScan)
+        {
+            this.portAutoScan = portAutoScan;
+            return this;
+        }
+        public Builder setUseSSL(boolean useSSL)
+        {
+            this.useSSL = useSSL;
+            return this;
+        }
+        public Builder setSettings(HTTPServerSettings settings)
+        {
+            this.settings = settings;
+            return this;
+        }
+        public Builder setContinueRunningSupplier(Supplier<Boolean> continueRunning)
+        {
+            this.continueRunning = continueRunning;
+            return this;
+        }
+        public Builder setCheckForExitTime(int checkForExitTime)
+        {
+            this.checkForExitTime = checkForExitTime;
+            return this;
+        }
+        
+        public HTTPServer build()
+        {
+            if(settings == null)
+                settings = HTTPServerSettings.create().build();
+            if(continueRunning == null)
+                continueRunning = () -> true;
+            if(checkForExitTime <= 0)
+                checkForExitTime = 5000;
+            
+            return new HTTPServer(
+                    port,
+                    settings,
+                    useSSL,
+                    portAutoScan,
+                    continueRunning,
+                    checkForExitTime);
+        }
+    }
+    // </editor-fold>
+    
+    
+    
+    public Thread toThread()
+    {
+        return new Thread(this);
+    }
+    
+    
+    public HTTPServerSettings getSettings()
+    {
+        return settings;
+    }
     
     /**
      * Get the port used by the server.
@@ -87,7 +163,6 @@ public class HTTPServer implements Runnable
                 cipherSuites = Stream.of(factory.getSupportedCipherSuites())
                         .filter(c -> c.toLowerCase().contains("anon"))
                         .toArray(String[]::new);
-                Stream.of(cipherSuites).forEach(c -> System.out.println(c));
             }
             SSLServerSocket socket = (SSLServerSocket)factory.createServerSocket(port);
             socket.setEnabledCipherSuites(cipherSuites);
@@ -107,7 +182,7 @@ public class HTTPServer implements Runnable
      */
     private ServerSocket openSocket() throws IOException
     {
-        if(scanIfNotAvailablePort)
+        if(portAutoScan)
         {
             ServerSocket ss;
             int p = this.port;
@@ -133,21 +208,30 @@ public class HTTPServer implements Runnable
         try
         {
             server = openSocket();
-            HTTPEnvironment environment = new HTTPEnvironment(settings, settings.getRoot());
-            System.out.println("[SERVER] \""
-                    + environment.getServerSettings().getServer()
-                    + "\" [Tout = " + environment.getServerSettings().getTimeout()
-                    + "s ; Nbmax = " + environment.getServerSettings().getMaxNbRequests()
+            
+            settings.println("[SERVER] \""
+                    + settings.getServer()
+                    + "\" [Tout = " + settings.getTimeout()
+                    + "s ; Nbmax = " + settings.getMaxNbRequests()
                     + "] started on port <"
                     + this.getPort()
                     + ">");
             
+            server.setSoTimeout(checkForExitTime);
+            
             do
             {
-                Socket clientSocket = server.accept();
-                
-                new Thread(new HTTPServerRuntime(clientSocket, environment)).start();
-            } while(true);
+                try
+                {
+                    Socket clientSocket = server.accept();
+                    if(settings.getSocketFilter().discard(clientSocket))
+                        continue;
+
+                    new Thread(new HTTPServerRuntime(clientSocket, settings)).start();
+                }
+                catch(SocketTimeoutException ex)
+                { }
+            } while(continueRunning.get());
         }
         catch (Exception ex)
         { }

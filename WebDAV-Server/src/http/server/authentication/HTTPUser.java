@@ -14,6 +14,7 @@ public class HTTPUser implements Serializable
     {
         this.username = username;
         this.password = password;
+        
         this.rights = new ArrayList<>(Arrays.asList(rights));
     }
     public HTTPUser(String username, String password)

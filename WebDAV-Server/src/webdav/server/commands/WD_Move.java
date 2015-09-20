@@ -1,13 +1,14 @@
 package webdav.server.commands;
 
-import http.server.authentication.HTTPUser;
+import http.FileSystemPath;
 import http.server.HTTPCommand;
-import http.server.HTTPEnvironment;
-import http.server.HTTPMessage;
+import http.server.message.HTTPResponse;
+import http.server.exceptions.UnexpectedException;
 import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
 import http.server.exceptions.NotFoundException;
 import http.server.exceptions.UserRequiredException;
+import http.server.message.HTTPEnvRequest;
 
 public class WD_Move extends HTTPCommand
 {
@@ -17,25 +18,33 @@ public class WD_Move extends HTTPCommand
     }
     
     @Override
-    public HTTPMessage Compute(HTTPMessage input, HTTPEnvironment environment) throws UserRequiredException, NotFoundException 
+    public HTTPResponse.Builder Compute(HTTPEnvRequest environment) throws UserRequiredException, NotFoundException, UnexpectedException 
     {
+        String dest = environment.getRequest().getHeader("destination");
+        
         try
         {
-            HTTPUser user = environment.getUser();
-        
-            String dest = input.getHeader("destination");
-            String host = input.getHeader("host");
-            String shortDest = URLDecoder.decode(dest.substring(dest.indexOf(host) + host.length()), "UTF-8");
+            FileSystemPath source = environment.getPath();
+            String host = environment.getRequest().getHeader("host");
+            String localDest = URLDecoder.decode(dest.substring(dest.indexOf(host) + host.length()), "UTF-8");
 
-            getResource(input.getPath(), environment)
-                    .moveTo(getPath(shortDest, environment), user);
+            getResource(source, environment)
+                    .moveTo(source
+                            , environment.getSettings()
+                                    .getFileSystemPathManager()
+                                    .createFromString(localDest)
+                            , environment);
         }
         catch (UnsupportedEncodingException ex)
-        { }
+        {
+            throw new UnexpectedException(ex);
+        }
         
-        HTTPMessage msg = new HTTPMessage(201, "Created");
-        msg.setHeader("Content-Type", "text/xml; charset=\"utf-8\"");
-        return msg;
+        return HTTPResponse.create()
+                .setCode(201)
+                .setMessage("Created")
+                .setHeader("Location", dest)
+                .setHeader("Content-Type", "text/xml; charset=\"utf-8\"");
     }
     
 }

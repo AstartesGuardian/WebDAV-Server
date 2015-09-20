@@ -1,8 +1,9 @@
 package webdav.server.commands;
 
+import http.StringJoiner;
 import http.server.HTTPCommand;
-import http.server.HTTPEnvironment;
-import http.server.HTTPMessage;
+import http.server.message.HTTPEnvRequest;
+import http.server.message.HTTPResponse;
 
 public class WD_Options extends HTTPCommand
 {
@@ -12,19 +13,19 @@ public class WD_Options extends HTTPCommand
     }
 
     @Override
-    public HTTPMessage Compute(HTTPMessage input, HTTPEnvironment environment) 
+    public HTTPResponse.Builder Compute(HTTPEnvRequest environment) 
     {
-        String cmds = "";
-        for(String s : environment.getServerSettings().getAllowedCommands().stream().map(c -> c.getName()).toArray(String[]::new))
-            if(cmds.isEmpty())
-                cmds += s;
-            else
-                cmds += ", " + s;
+        String cmds = environment.getSettings()
+                .getAllowedCommands()
+                .stream()
+                .map(HTTPCommand::getName)
+                .reduce("", StringJoiner.join(", "));
         
-        HTTPMessage msg = new HTTPMessage(200, "OK");
-        msg.setHeader("Allow", cmds);
-        msg.setHeader("Content-Type", "httpd/unix-directory");
-        return msg;
+        return HTTPResponse.create()
+                .setCode(200)
+                .setMessage("OK")
+                .setHeader("Allow", cmds)
+                .setHeader("Content-Type", "httpd/unix-directory");
     }
     
 }

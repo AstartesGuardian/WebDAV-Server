@@ -1,6 +1,10 @@
 package http.server;
 
-import java.io.ByteArrayInputStream;
+import http.server.message.HTTPMessage;
+import http.server.message.HTTPResponse;
+import http.ExtendableByteBuffer;
+import http.FileSystemPath;
+import http.server.exceptions.UnexpectedException;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
@@ -10,10 +14,10 @@ import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
 import org.w3c.dom.Document;
 import org.xml.sax.SAXException;
-import webdav.server.Helper;
-import webdav.server.IResource;
+import webdav.server.resource.IResource;
 import http.server.exceptions.NotFoundException;
 import http.server.exceptions.UserRequiredException;
+import http.server.message.HTTPEnvRequest;
 import webdav.server.commands.WD_Delete;
 import webdav.server.commands.WD_Get;
 import webdav.server.commands.WD_Head;
@@ -55,9 +59,9 @@ public abstract class HTTPCommand
      * @return HTTPMessage
      * @throws http.server.exceptions.UserRequiredException
      */
-    public abstract HTTPMessage Compute(HTTPMessage input, HTTPEnvironment environment) throws UserRequiredException, NotFoundException;
+    public abstract HTTPResponse.Builder Compute(HTTPEnvRequest environment) throws UserRequiredException, NotFoundException, UnexpectedException;
     
-    public void Continue(HTTPMessage input, byte[] data, HTTPEnvironment environment) throws UserRequiredException, NotFoundException
+    public void Continue(HTTPEnvRequest environment) throws UserRequiredException, NotFoundException
     { }
     
     /**
@@ -104,7 +108,14 @@ public abstract class HTTPCommand
     @Override
     public boolean equals(Object obj)
     {
-        return obj instanceof HTTPCommand && this.getName().equals(((HTTPCommand)obj).getName());
+        return obj instanceof HTTPCommand && this.getName().equals(((HTTPCommand)obj).getName())
+                || obj instanceof String && this.getName().equals(obj.toString());
+    }
+
+    @Override
+    public int hashCode()
+    {
+        return getName().hashCode();
     }
 
     @Override
@@ -129,13 +140,9 @@ public abstract class HTTPCommand
     }
     protected Document createDocument(byte[] content) throws ParserConfigurationException, IOException, SAXException
     {
-        DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
-        factory.setNamespaceAware(true);
-
-        DocumentBuilder xmlBuilder = factory.newDocumentBuilder();
-
-        ByteArrayInputStream bais = new ByteArrayInputStream(content);
-        return xmlBuilder.parse(bais);
+        return new ExtendableByteBuffer()
+                .write(content)
+                .toXML();
     }
     
     
@@ -146,38 +153,59 @@ public abstract class HTTPCommand
     
     protected String getHostPath(String path, String host)
     {
-        return "http://" + (host.replace("/", "") + Helper.toUTF8(path.replace("\\", "/"))).replace("//", "/");
+        return "http://" + (host.replace("/", "") + path.replace("\\", "/")).trim().replace("//", "/").replace(" ", "%20");
     }
     
     
-    private final Map<String, IResource> openedResources;
-    
+    private final Map<FileSystemPath, IResource> openedResources;
+    /*
     protected String getPath(String path, HTTPEnvironment environment)
     {
-        return environment.getRoot() + path.replace("/", "\\").trim();
+        return path.replace("/", "\\").trim();
     }
-    private IResource getResource_(String path, HTTPEnvironment environment) throws UserRequiredException, NotFoundException
+    private IResource getResource_(String path, HTTPEnvRequest environment)
     {
         return environment.getResourceFromPath(getPath(path, environment));
-    }
-    protected IResource getResource(String path, HTTPEnvironment environment) throws UserRequiredException, NotFoundException
+    }*/
+    private IResource getNonBufferedResource(FileSystemPath path, HTTPEnvRequest environment)
     {
-        if(environment.getServerSettings().getUseResourceBuffer())
+        return environment.getSettings()
+                .getFileManager()
+                .getResourceFromPath(path, environment);
+    }
+    protected IResource getResource(FileSystemPath path, HTTPEnvRequest environment)
+    {
+        if(environment.getSettings().getUseResourceBuffer())
         {
             if(openedResources.containsKey(path))
                 return openedResources.get(path);
             else
             {
-                IResource rs = getResource_(path, environment);
+                IResource rs = getNonBufferedResource(path, environment);
                 openedResources.put(path, rs);
                 return rs;
             }
         }
         else
-            return getResource_(path, environment);
+            return getNonBufferedResource(path, environment);
     }
-    protected void closeResource(String path)
+    protected IResource getResource(String path, HTTPEnvRequest environment)
     {
-        openedResources.remove(path);
+        return getResource(environment.getSettings()
+                .getFileSystemPathManager()
+                .createFromString(path)
+                , environment);
+    }
+    protected void closeResource(String path, HTTPEnvRequest environment)
+    {
+        closeResource(environment.getSettings()
+                .getFileSystemPathManager()
+                .createFromString(path)
+                , environment);
+    }
+    protected void closeResource(FileSystemPath path, HTTPEnvRequest environment)
+    {
+        if(environment.getSettings().getUseResourceBuffer())
+            openedResources.remove(path);
     }
 }

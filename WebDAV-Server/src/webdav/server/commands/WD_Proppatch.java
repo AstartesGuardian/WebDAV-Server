@@ -1,25 +1,24 @@
 package webdav.server.commands;
 
-import http.server.authentication.HTTPUser;
+import http.FileSystemPath;
 import http.server.HTTPCommand;
-import http.server.HTTPEnvironment;
-import http.server.HTTPMessage;
-import java.io.ByteArrayInputStream;
+import http.server.exceptions.UnexpectedException;
+import http.server.message.HTTPResponse;
 import java.io.IOException;
 import java.util.stream.Stream;
-import javax.xml.parsers.DocumentBuilder;
-import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
 import org.w3c.dom.DOMException;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.xml.sax.SAXException;
-import webdav.server.IResource;
-import webdav.server.NodeListWrap;
+import webdav.server.resource.IResource;
+import webdav.server.tools.NodeListWrap;
 import http.server.exceptions.NotFoundException;
 import http.server.exceptions.UserRequiredException;
-import webdav.server.virtual.entity.VEntity;
+import http.server.message.HTTPEnvRequest;
+import java.util.Collection;
+import java.util.stream.Collectors;
 
 public class WD_Proppatch extends HTTPCommand
 {
@@ -28,21 +27,20 @@ public class WD_Proppatch extends HTTPCommand
         super("proppatch");
     }
     
-    private Node[] getNodes(Document doc, String operationName)
+    private Collection<Node> getNodes(Document doc, String operationName)
     {
         return NodeListWrap
                 .getStream(doc.getElementsByTagNameNS("*", operationName.toLowerCase()))
-                .filter(n -> n.hasChildNodes())
-                .map(n -> n.getFirstChild())
-                .map(n -> NodeListWrap
-                .getStream(n.getChildNodes()))
-                .flatMap(prop -> prop)
-                .toArray(Node[]::new);
+                .filter(Node::hasChildNodes)
+                .map(Node::getFirstChild)
+                .map(Node::getChildNodes)
+                .flatMap(ns -> NodeListWrap.getStream(ns))
+                .collect(Collectors.toList());
     }
     
     
     
-    private Document generateResult(Stream<Node> totalStream, IResource f, String host, HTTPUser user) throws UserRequiredException, ParserConfigurationException
+    private Document generateResult(Stream<Node> totalStream, IResource resource, FileSystemPath path, String host, HTTPEnvRequest environment) throws UserRequiredException, ParserConfigurationException
     {
         final Document doc = createDocument();
 
@@ -53,14 +51,13 @@ public class WD_Proppatch extends HTTPCommand
         root.appendChild(response);
 
         Element aResponse = doc.createElementNS("DAV:", "href");
-        aResponse.setTextContent(getHostPath(f.getPath(user), host));
+        aResponse.setTextContent(getHostPath(path.toString(), host));
         response.appendChild(aResponse);
-
+        
         totalStream
-                .forEach(node ->
+                .map(node ->
                 {
                     Element propstat = doc.createElementNS("DAV:", "propstat");
-                    response.appendChild(propstat);
 
                     Element status = doc.createElementNS("DAV:", "status");
                     status.setTextContent("HTTP/1.1 200 OK");
@@ -71,47 +68,51 @@ public class WD_Proppatch extends HTTPCommand
 
                     Element nodeElement = doc.createElementNS(node.getNamespaceURI(), node.getLocalName());
                     prop.appendChild(nodeElement);
-                });
+                    
+                    return propstat;
+                })
+                .forEach(response::appendChild);
         
         return doc;
     }
     
     @Override
-    public HTTPMessage Compute(HTTPMessage input, HTTPEnvironment environment) throws UserRequiredException, NotFoundException 
+    public HTTPResponse.Builder Compute(HTTPEnvRequest environment) throws UserRequiredException, NotFoundException 
     {
-        HTTPUser user = environment.getUser();
-        IResource f = getResource(input.getPath(), environment);
-        String host = input.getHeader("host");
+        FileSystemPath path = environment.getPath();
+        IResource resource = getResource(path, environment);
+        String host = environment.getRequest().getHeader("host");
         
         byte[] content = new byte[0];
         
         try
         {
-            VEntity entity = (VEntity)f;
-        
-            Document doc = createDocument(input);
+            Document doc = createDocument(environment.getRequest());
             
             doc.getDocumentElement().normalize();
             
-            Node[] setStream = getNodes(doc, "set");
-            Node[] removeStream = getNodes(doc, "remove");
+            Collection<Node> setStream = getNodes(doc, "set");
+            Collection<Node> removeStream = getNodes(doc, "remove");
             
-            Stream<Node> totalStream = Stream.concat(Stream.of(setStream), Stream.of(removeStream));
+            Stream<Node> totalStream = Stream.concat(setStream.stream(), removeStream.stream());
             
             for(Node n : setStream)
-                entity.setProperty(n, n.getTextContent(), user);
+                resource.setProperty(n.getNamespaceURI(), n.getLocalName(), n.getTextContent(), environment);
             for(Node n : removeStream)
-                entity.removeProperty(n, user);
+                resource.removeProperty(n.getNamespaceURI(), n.getLocalName(), environment);
             
-            content = NodeListWrap.getBytes(generateResult(totalStream, f, host, user));
+            content = NodeListWrap.getBytes(generateResult(totalStream, resource, path, host, environment));
         }
         catch (ParserConfigurationException | SAXException | IOException | DOMException ex)
-        { }
+        {
+            throw new UnexpectedException(ex);
+        }
         
-        HTTPMessage msg = new HTTPMessage(200, "OK");
-        msg.setContent(content);
-        msg.setHeader("Content-Type", "text/xml; charset=\"utf-8\"");
-        return msg;
+        return HTTPResponse.create()
+                .setCode(207)
+                .setMessage("Multi-Status ")
+                .setContent(content)
+                .setHeader("Content-Type", "text/xml; charset=\"utf-8\"");
     }
     
 }

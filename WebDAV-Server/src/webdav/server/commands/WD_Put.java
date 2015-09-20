@@ -1,12 +1,13 @@
 package webdav.server.commands;
 
-import http.server.authentication.HTTPUser;
+import http.FileSystemPath;
 import http.server.HTTPCommand;
-import http.server.HTTPEnvironment;
-import http.server.HTTPMessage;
-import webdav.server.IResource;
+import http.server.message.HTTPResponse;
 import http.server.exceptions.NotFoundException;
 import http.server.exceptions.UserRequiredException;
+import http.server.message.HTTPEnvRequest;
+import webdav.server.resource.IResource;
+import webdav.server.resource.ResourceType;
 
 public class WD_Put extends HTTPCommand
 {
@@ -16,32 +17,32 @@ public class WD_Put extends HTTPCommand
     }
     
     @Override
-    public HTTPMessage Compute(HTTPMessage input, HTTPEnvironment environment) throws UserRequiredException, NotFoundException
+    public HTTPResponse.Builder Compute(HTTPEnvRequest environment) throws UserRequiredException, NotFoundException
     {
-        HTTPUser user = environment.getUser();
+        FileSystemPath path = environment.getPath();
+        IResource resource = getResource(path, environment);
         
-        if(input.getHeader("content-length").equals("0"))
+        if(environment.getRequest().getHeader("content-length").equals("0"))
         { // Content-Length == 0
-            environment.getResourceManager().createFile(getPath(input.getPath(), environment), user);
+            getResource(path.getParent(), environment)
+                    .addChild(resource.creates(ResourceType.File, environment), environment);
         }
         else
         { // Content-Length != 0
-            getResource(input.getPath(), environment).setContent(input.getContent(), user);
+            resource.setContent(environment.getRequest().getContent(), environment);
         }
         
-        HTTPMessage msg = new HTTPMessage(200, "OK");
-        msg.setHeader("Content-Type", "text/xml; charset=\"utf-8\"");
-        return msg;
+        return HTTPResponse.create()
+                .setCode(200)
+                .setMessage("OK")
+                .setHeader("Content-Type", "text/xml; charset=\"utf-8\"");
     }
     
     @Override
-    public void Continue(HTTPMessage input, byte[] data, HTTPEnvironment environment) throws UserRequiredException, NotFoundException
+    public void Continue(HTTPEnvRequest environment) throws UserRequiredException, NotFoundException
     {
-        if(data.length > 0)
-        {
-            HTTPUser user = environment.getUser();
-        
-            getResource(input.getPath(), environment).appendContent(data, user);
-        }
+        System.err.println("XXXXXXXXXXXXXXXXXXXXXXXXXXX");
+        if(environment.getBytesReceived().length > 0)
+            getResource(environment.getPath(), environment).appendContent(environment.getBytesReceived(), environment);
     }
 }

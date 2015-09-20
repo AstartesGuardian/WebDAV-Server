@@ -1,14 +1,15 @@
 package http.server.authentication;
 
-import http.server.HTTPMessage;
+import http.server.message.HTTPMessage;
+import http.server.message.HTTPRequest;
 import java.io.Serializable;
 import java.security.NoSuchAlgorithmException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
 import java.util.StringTokenizer;
-import webdav.server.Helper;
-import webdav.server.crypter.ICrypter;
+import webdav.server.tools.Helper;
+import webdav.server.crypter.AbstractCrypter;
 
 public abstract class HTTPAuthenticationManager implements Serializable
 {
@@ -82,7 +83,7 @@ public abstract class HTTPAuthenticationManager implements Serializable
         return getDefaultUser();
     }
     
-    public HTTPUser checkAuth(HTTPMessage request)
+    public HTTPUser checkAuth(HTTPRequest request)
     {
         try
         {
@@ -125,18 +126,18 @@ public abstract class HTTPAuthenticationManager implements Serializable
             String password = user.getPassword();
             
             String realm = this.getRealm();
-            String uri = request.getPurePath();
-            String method = request.getCommand().getName().trim().toUpperCase();
+            String uri = request.getPath();
+            String method = request.getCommand().trim().toUpperCase();
             String nonce = authValues.get("nonce");
             String nonceCount = authValues.get("nc");
             String clientNonce = authValues.get("cnonce");
             String qop = authValues.get("qop");
             
-            String ha1 = Helper.toHex(ICrypter.md5(username + ":" + realm + ":" + password));
-            String ha2 = Helper.toHex(ICrypter.md5(method + ":" + uri));
+            String ha1 = Helper.toHex(AbstractCrypter.md5(username + ":" + realm + ":" + password));
+            String ha2 = Helper.toHex(AbstractCrypter.md5(method + ":" + uri));
             
             String receivedValue = authValues.get("response");
-            String resultValue = Helper.toHex(ICrypter.md5(ha1 + ":" + nonce + ":" + nonceCount + ":" + clientNonce + ":" + qop + ":" + ha2));
+            String resultValue = Helper.toHex(AbstractCrypter.md5(ha1 + ":" + nonce + ":" + nonceCount + ":" + clientNonce + ":" + qop + ":" + ha2));
             
             if(resultValue.equals(receivedValue))
             {
@@ -156,7 +157,7 @@ public abstract class HTTPAuthenticationManager implements Serializable
         {
             byte[] data = new byte[50];
             getRandom().nextBytes(data);
-            return Helper.toHex(ICrypter.md5(data));
+            return Helper.toHex(AbstractCrypter.md5(data));
         }
         catch (NoSuchAlgorithmException ex)
         {

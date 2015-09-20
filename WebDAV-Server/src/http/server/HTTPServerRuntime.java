@@ -1,30 +1,35 @@
 package http.server;
 
-import http.server.authentication.HTTPUser;
-import http.server.authentication.HTTPAuthenticationManager;
-import webdav.server.Helper;
+import http.server.message.HTTPRequest;
+import http.server.message.HTTPResponse;
+import http.ExtendableByteBuffer;
+import http.server.exceptions.AlreadyExistingException;
+import http.server.exceptions.DeadResourceException;
+import http.server.exceptions.UnexpectedException;
+import http.server.exceptions.UnimplementedMethodException;
+import webdav.server.tools.Helper;
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.IOException;
 import java.net.Socket;
 import java.net.SocketException;
 import java.net.SocketTimeoutException;
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Date;
-import java.util.List;
 import http.server.exceptions.NotFoundException;
 import http.server.exceptions.UserRequiredException;
-import webdav.server.commands.WD_Options;
+import http.server.exceptions.WrongResourceTypeException;
+import http.server.message.HTTPEnvRequest;
 
 public class HTTPServerRuntime implements Runnable
 {
     private final int FULL_REQUEST_TIMEOUT = 50; // ms
     
-    public HTTPServerRuntime(Socket socket, HTTPEnvironment environment) throws IOException
+    public HTTPServerRuntime(Socket socket, HTTPServerSettings settings) throws IOException
     {
         this.socket = socket;
-        this.environment = new HTTPEnvironment(environment);
+        
+        this.settings = settings;
+        
         this.in = new BufferedInputStream(socket.getInputStream());
         this.out = new BufferedOutputStream(socket.getOutputStream());
     }
@@ -32,10 +37,128 @@ public class HTTPServerRuntime implements Runnable
     private final Socket socket;
     private final BufferedInputStream in;
     private final BufferedOutputStream out;
-    private final HTTPEnvironment environment;
+    private final HTTPServerSettings settings;
     
     
     
+    
+    
+    
+    
+    
+    boolean finishedToRead = false;
+    boolean firstTime = true;
+    HTTPCommand cmd = null;
+    HTTPRequest inputMsg = null;
+    
+    
+    protected byte[] computeRequest(byte[] input, HTTPEnvRequest.Builder envBuilder) throws UserRequiredException, NotFoundException, UnimplementedMethodException, UnexpectedException
+    {
+        if(firstTime || cmd == null)
+        { // First time
+            inputMsg = HTTPRequest.parseHTTPRequest(input);
+            
+            final HTTPRequest inputMsgFinal = inputMsg;
+
+            cmd = settings
+                    .getAllowedCommands()
+                    .stream()
+                    .filter(c -> c.equals(inputMsgFinal.getCommand()))
+                    .findFirst()
+                    .orElseThrow(UnimplementedMethodException::new);
+
+            HTTPEnvRequest env = envBuilder
+                    .setRequest(inputMsg)
+                    .setCommand(cmd)
+                    .setBytesReceived(input)
+                    .build();
+            
+            HTTPResponse.Builder outputMsg = settings.getRequestFilters()
+                    .stream()
+                    .map(f -> f.filter(env))
+                    .filter(r -> r != null)
+                    .findFirst()
+                    .orElseGet(() -> cmd.Compute(env));
+
+            outputMsg.setHeader("Server", settings.getServer())
+                     .setHeader("Date", Helper.toString(new Date()))
+                     .setHeader("Keep-Alive", "timeout=" + settings.getTimeout() + ", max=" + settings.getMaxNbRequests());
+
+            firstTime = false;
+            return outputMsg.build().toBytes();
+        }
+        else
+        { // Continue
+            HTTPEnvRequest env = envBuilder
+                    .setBytesReceived(input)
+                    .build();
+
+            cmd.Continue(env);
+            return null;
+        }
+    }
+    
+    protected byte[] ExceptionManager(byte[] input, HTTPEnvRequest.Builder envBuilder)
+    {
+        try
+        {
+            return computeRequest(input, envBuilder);
+        }
+        catch(UserRequiredException ex)
+        {
+            settings.onUserRequiredException().accept(ex);
+            return HTTPResponse.create()
+                    .setCode(401)
+                    .setMessage("Unauthorized")
+                    .setHeader("WWW-Authenticate", "Digest realm=\"" + settings.getAuthenticationManager().getRealm() + "\", qop=\"auth,auth-int\", nonce=\"" + settings.getAuthenticationManager().generateNonce() + "\", opaque=\"" + settings.getAuthenticationManager().generateNonce() + "\"")
+                    .build()
+                    .toBytes();
+        }
+        catch(NotFoundException ex)
+        {
+            settings.onNotFoundException().accept(ex);
+            return NotFoundException.getHTTPResponse()
+                    .build()
+                    .toBytes();
+        }
+        catch(UnimplementedMethodException ex)
+        {
+            settings.onUnimplementedMethodException().accept(ex);
+            return HTTPResponse.create()
+                    .setCode(501)
+                    .setMessage("Not Implemented")
+                    .build()
+                    .toBytes();
+        }
+        catch(UnexpectedException ex)
+        {
+            settings.onUnexpectedException().accept(ex);
+            return HTTPResponse.create()
+                    .setCode(500)
+                    .setMessage("Internal Server Error")
+                    .build()
+                    .toBytes();
+        }
+        catch(AlreadyExistingException ex)
+        {
+            settings.onAlreadyExistingException().accept(ex);
+            return HTTPResponse.create()
+                    .setCode(412)
+                    .setMessage("Precondition Failed")
+                    .build()
+                    .toBytes();
+        }
+        catch(DeadResourceException ex)
+        {
+            settings.onDeadResourceException().accept(ex);
+            throw ex;
+        }
+        catch(WrongResourceTypeException ex)
+        {
+            settings.onWrongResourceTypeException().accept(ex);
+            throw ex;
+        }
+    }
     
     
     @Override
@@ -43,132 +166,72 @@ public class HTTPServerRuntime implements Runnable
     {
         try
         {
-            HTTPAuthenticationManager userManager = environment.getAuthenticationManager();
-            final int maxBufferSize = environment.getServerSettings().getMaxBufferSize();
-            final int bufferStep = environment.getServerSettings().getStepBufferSize();
+            HTTPEnvRequest.Builder envBuilder = HTTPEnvRequest.create()
+                    .setSettings(settings);
             
-            byte[] inputBuffer = new byte[bufferStep];
-            int nbInput;
+            final int maxBufferSize = settings.getMaxBufferSize();
+            final int bufferStep = settings.getStepBufferSize();
             
-            for(int nbRequest = 0; nbRequest < environment.getServerSettings().getMaxNbRequests(); nbRequest++)
+            for(int nbRequest = 0; nbRequest < settings.getMaxNbRequests(); nbRequest++)
             {
-                boolean finishedToRead = false;
-                boolean firstTime = true;
-                HTTPCommand cmd = null;
-                HTTPMessage inputMsg = null;
+                finishedToRead = false;
+                firstTime = true;
+                cmd = null;
+                inputMsg = null;
                 
                 byte[] output = null;
                 
                 do
                 {
-                    List<byte[]> buffers = new ArrayList<>();
-                    int read = 0;
+                    ExtendableByteBuffer ebb = new ExtendableByteBuffer()
+                            .setInternalBufferSize(bufferStep);
+                    
                     do
                     {
-                        socket.setSoTimeout(environment.getServerSettings().getTimeout() * 1000);
+                        socket.setSoTimeout(settings.getTimeout() * 1000);
 
-                        nbInput = in.read(inputBuffer, 0, inputBuffer.length);
-                        if(nbInput > 0)
-                        {
-                            read += nbInput;
-                            buffers.add(Arrays.copyOf(inputBuffer, nbInput));
-                        }
+                        ebb.writeOnce(in);
                         
                         socket.setSoTimeout(FULL_REQUEST_TIMEOUT);
                         try
                         {
-                            while(read <= maxBufferSize)
-                            {
-                                nbInput = in.read(inputBuffer, 0, inputBuffer.length);
-                                if(nbInput > 0)
-                                {
-                                    read += nbInput;
-                                    buffers.add(Arrays.copyOf(inputBuffer, nbInput));
-                                }
-                            }
+                            ebb.write(in, maxBufferSize);
                         }
                         catch (Exception ex)
                         {
                             finishedToRead = true;
                             break;
                         }
-                    } while(read == 0);
+                    } while(ebb.length() == 0);
+                    
+                    byte[] input = ebb.toBytes();
 
-                    byte[] input = new byte[read];
-                    int index = 0;
-                    for (byte[] buff : buffers)
+                    if(settings.getPrintRequests())
                     {
-                        System.arraycopy(buff, 0, input, index, buff.length);
-                        index += buff.length;
-                    }
-
-                    if(environment.getServerSettings().getPrintRequests())
-                    {
-                        System.out.println("***** REQUEST *****");
-                        if(firstTime)
-                            System.out.println(new String(input, 0, Math.min(input.length, 2000), "UTF-8"));
-                        else
-                            System.out.println("[CONTINUE...] : " + read);
-                        System.out.println("*** END REQUEST ***");
-                        System.out.println();
+                        settings.println("***** REQUEST *****")
+                                .println(firstTime ? 
+                                        new String(input, 0, Math.min(input.length, 2000), "UTF-8")
+                                        : "[CONTINUE...] : " + input.length)
+                                .println("*** END REQUEST ***")
+                                .println();
                     }
                     
-                    if(!firstTime && cmd != null || firstTime)
+                    if(cmd != null || firstTime)
                     {
-                        try
-                        {
-                            if(firstTime || cmd == null)
-                            { // First time
-                                inputMsg = new HTTPMessage(input, socket, environment.getServerSettings().getAllowedCommands());
-
-                                HTTPUser user = null;
-                                if(userManager != null)
-                                {
-                                    user = userManager.checkAuth(inputMsg);
-                                    if(user != null)
-                                        environment.setUser(user);
-                                }
-
-                                cmd = inputMsg.getCommand();
-
-                                HTTPMessage outputMsg = cmd.Compute(inputMsg, environment);
-
-                                outputMsg.setHeader("Server", environment.getServerSettings().getServer());
-                                outputMsg.setHeader("Date", Helper.toString(new Date()));
-                                outputMsg.setHeader("Keep-Alive", "timeout=" + environment.getServerSettings().getTimeout() + ", max=" + environment.getServerSettings().getMaxNbRequests());
-
-                                output = outputMsg.toBytes();
-                                firstTime = false;
-                            }
-                            else
-                            { // Continue
-                                cmd.Continue(inputMsg, input, environment);
-                            }
-                        }
-                        catch(UserRequiredException ex)
-                        {
-                            HTTPMessage outputMsg = new HTTPMessage(401, "Unauthorized");
-                            outputMsg.setHeader("WWW-Authenticate", "Digest realm=\"" + userManager.getRealm() + "\", qop=\"auth,auth-int\", nonce=\"" + userManager.generateNonce() + "\", opaque=\"" + userManager.generateNonce() + "\"");
-                            
-                            output = outputMsg.toBytes();
-                        }
-                        catch(NotFoundException ex)
-                        {
-                            HTTPMessage outputMsg = new HTTPMessage(404, "Not found");
-                            
-                            output = outputMsg.toBytes();
-                        }
+                        byte[] result = ExceptionManager(input, envBuilder);
+                        if(result != null)
+                            output = result;
                     }
                 } while(!finishedToRead);
                 
                 if(output != null)
                 {
-                    if(environment.getServerSettings().getPrintResponses())
+                    if(settings.getPrintResponses())
                     {
-                        System.out.println("***** RESPONSE *****");
-                        System.out.println(new String(output, 0, Math.min(output.length, 2000), "UTF-8"));
-                        System.out.println("*** END RESPONSE ***");
-                        System.out.println();
+                        settings.println("***** RESPONSE *****")
+                                .println(new String(output, 0, Math.min(output.length, 4000), "UTF-8"))
+                                .println("*** END RESPONSE ***")
+                                .println();
                     }
                     
                     out.write(output, 0, output.length);
@@ -180,8 +243,11 @@ public class HTTPServerRuntime implements Runnable
         { }
         catch (Exception ex)
         {
-            if(environment.getServerSettings().getPrintErrors())
+            if(settings.getPrintErrors())
                 ex.printStackTrace();
+            
+            settings.getOnError()
+                    .accept(ex);
         }
         finally
         {

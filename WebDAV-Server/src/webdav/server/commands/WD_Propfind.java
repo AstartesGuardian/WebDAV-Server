@@ -1,22 +1,24 @@
 package webdav.server.commands;
 
-import http.server.authentication.HTTPUser;
+import http.FileSystemPath;
 import http.server.HTTPCommand;
-import http.server.HTTPEnvironment;
-import http.server.HTTPMessage;
+import http.server.exceptions.UnexpectedException;
+import http.server.message.HTTPResponse;
 import java.nio.file.attribute.FileTime;
 import java.time.Instant;
 import java.util.Date;
-import java.util.stream.Stream;
 import javax.xml.parsers.ParserConfigurationException;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
-import webdav.server.Helper;
-import webdav.server.IResource;
-import webdav.server.NodeListWrap;
+import webdav.server.tools.Helper;
+import webdav.server.resource.IResource;
+import webdav.server.tools.NodeListWrap;
 import http.server.exceptions.NotFoundException;
 import http.server.exceptions.UserRequiredException;
-import webdav.server.virtual.entity.VEntity;
+import http.server.message.HTTPEnvRequest;
+import java.io.UnsupportedEncodingException;
+import java.net.URLDecoder;
+import webdav.server.resource.ResourceType;
 
 public class WD_Propfind extends HTTPCommand
 {
@@ -25,29 +27,21 @@ public class WD_Propfind extends HTTPCommand
         super("propfind");
     }
     
-    private Element getInfo(IResource f, String host, HTTPEnvironment environment, Document doc) throws UserRequiredException
+    private Element getInfo(IResource resource, FileSystemPath path, String host, HTTPEnvRequest environment, Document doc) throws UserRequiredException, UnsupportedEncodingException
     {
-        HTTPUser user = environment.getUser();
-        
-        if(!f.isVisible(user))
+        if(!resource.isVisible(environment))
             return null;
         
-        String displayName = f.getWebName(user);
-        String path = f.getPath(user);
-        Instant creationTime = f.getCreationTime(user);
+        String displayName = resource.getWebName(environment);
+        Instant creationTime = resource.getCreationTime(environment);
 
-        if(displayName == null
-                || path == null
-                || creationTime == null
-                || !(f instanceof VEntity))
+        if(displayName == null || creationTime == null)
             return null;
-
-        VEntity entity = (VEntity)f;
 
         Element response = doc.createElementNS("DAV:", "response");
 
         Element href = doc.createElementNS("DAV:", "href");
-        href.setTextContent(getHostPath(path, host));
+        href.setTextContent(getHostPath(path.toString(), host));
         response.appendChild(href);
 
         Element propstat = doc.createElementNS("DAV:", "propstat");
@@ -65,13 +59,14 @@ public class WD_Propfind extends HTTPCommand
         prop.appendChild(creationdate);
 
         Element displayname = doc.createElementNS("DAV:", "displayname");
-        displayname.setTextContent(Helper.toUTF8(displayName));
+        displayname.setTextContent(URLDecoder.decode(displayName, "UTF-8"));
         prop.appendChild(displayname);
 
         Element supportedlock = doc.createElementNS("DAV:", "supportedlock");
         prop.appendChild(supportedlock);
 
-        Stream.of(entity.getAvailableLocks())
+        resource.getAvailableLocks()
+                .stream()
                 .forEach(lk ->
                 {
                     Element value;
@@ -90,7 +85,8 @@ public class WD_Propfind extends HTTPCommand
                     lockentry.appendChild(locktype);
                 });
         
-        entity.getProperties(user)
+        resource.getProperties(environment)
+                .entrySet()
                 .forEach(p ->
                 {
                     Element property = doc.createElementNS(p.getKey().getKey(), p.getKey().getValue());
@@ -98,22 +94,22 @@ public class WD_Propfind extends HTTPCommand
                     prop.appendChild(property);
                 });
 
-        switch(f.getResourceType(user))
+        switch(resource.getResourceType(environment))
         {
             case File:
-                if(!getInfoFile(f, host, environment, doc, prop))
+                if(!getInfoFile(resource, host, environment, doc, prop))
                     return null;
                 break;
 
             case Directory:
-                if(!getInfoFolder(f, host, environment, doc, prop))
+                if(!getInfoFolder(resource, host, environment, doc, prop))
                     return null;
                 break;
         }
         
         return response;
     }
-    private boolean getInfoFolder(IResource f, String host, HTTPEnvironment environment, Document doc, Element parent) throws UserRequiredException
+    private boolean getInfoFolder(IResource resource, String host, HTTPEnvRequest environment, Document doc, Element parent) throws UserRequiredException
     {
         Element resourcetype = doc.createElementNS("DAV:", "resourcetype");
         parent.appendChild(resourcetype);
@@ -123,12 +119,10 @@ public class WD_Propfind extends HTTPCommand
         
         return true;
     }
-    private boolean getInfoFile(IResource f, String host, HTTPEnvironment environment, Document doc, Element parent) throws UserRequiredException
+    private boolean getInfoFile(IResource resource, String host, HTTPEnvRequest environment, Document doc, Element parent) throws UserRequiredException
     {
-        HTTPUser user = environment.getUser();
-        
-        Instant lastModified = f.getLastModified(user);
-        String mimeType = f.getMimeType(user);
+        Instant lastModified = resource.getLastModified(environment);
+        String mimeType = resource.getMimeType(environment);
         if(mimeType == null)
             mimeType = "text/binary";
         
@@ -140,7 +134,7 @@ public class WD_Propfind extends HTTPCommand
         parent.appendChild(resourcetype);
         
         Element getcontentlength = doc.createElementNS("DAV:", "getcontentlength");
-        getcontentlength.setTextContent(String.valueOf(f.getSize(user)));
+        getcontentlength.setTextContent(String.valueOf(resource.getSize(environment)));
         parent.appendChild(getcontentlength);
         
         Element getcontenttype = doc.createElementNS("DAV:", "getcontenttype");
@@ -159,13 +153,12 @@ public class WD_Propfind extends HTTPCommand
     }
 
     @Override
-    public HTTPMessage Compute(HTTPMessage input, HTTPEnvironment environment) throws UserRequiredException, NotFoundException 
+    public HTTPResponse.Builder Compute(HTTPEnvRequest environment) throws UserRequiredException, NotFoundException 
     {
-        HTTPUser user = environment.getUser();
+        FileSystemPath path = environment.getPath();
+        IResource f = getResource(path, environment);
         
-        IResource f = getResource(input.getPath(), environment);
-        
-        String host = input.getHeader("host");
+        String host = environment.getRequest().getHeader("host");
         
         try
         {
@@ -174,32 +167,38 @@ public class WD_Propfind extends HTTPCommand
             Element multistatus = doc.createElementNS("DAV:", "multistatus");
             doc.appendChild(multistatus);
             
-            Element current = getInfo(f, host, environment, doc);
+            Element current = getInfo(f, path, host, environment, doc);
             if(current == null)
                 throw new NotFoundException();
             multistatus.appendChild(current);
             
-            if(input.getHeader("depth").trim().equals("0"))
+            if(environment.getRequest().getHeader("depth").trim().equals("0"))
             { // depth = 0
             }
             else
             { // depth = 1
-                for(IResource subFile : f.listResources(user))
+                for(IResource subFile : f.listResources(environment))
                 {
-                    Element child = getInfo(subFile, host, environment, doc);
-                    if(child != null)
-                        multistatus.appendChild(child);
+                    try
+                    {
+                        Element child = getInfo(subFile, path.createChild(subFile.getWebName(environment)), host, environment, doc);
+                        if(child != null)
+                            multistatus.appendChild(child);
+                    }
+                    catch(NotFoundException ex)
+                    { }
                 }
             }
         
-            HTTPMessage msg = new HTTPMessage(207, "Multi-Status");
-            msg.setHeader("Content-Type", "text/xml; charset=\"utf-8\"");
-            msg.setContent(NodeListWrap.getBytes(doc));
-            return msg;
+            return HTTPResponse.create()
+                    .setCode(207)
+                    .setMessage("Multi-Status")
+                    .setHeader("Content-Type", "text/xml; charset=\"utf-8\"")
+                    .setContent(NodeListWrap.getBytes(doc));
         }
-        catch (ParserConfigurationException ex)
+        catch (ParserConfigurationException | UnsupportedEncodingException ex)
         {
-            throw new NotFoundException();
+            throw new UnexpectedException(ex);
         }
     }
 
