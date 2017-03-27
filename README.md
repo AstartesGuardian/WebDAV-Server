@@ -42,6 +42,7 @@ Wiki : https://github.com/AstartesGuardian/WebDAV-Server/wiki
 <br><hr><h2><b>Quick code information</b></h2>
 
 <h4>Quick use of a standard WebDAV server :</h4>
+
 ```java
 VirtualManager vm;
 try
@@ -77,8 +78,10 @@ settings.setUseResourceBuffer(false);
 HTTPServer s = new HTTPServer(1700, settings, false, true);
 s.run();
 ```
+
 <br>
 <h4>Quick use of a crypted WebDAV server :</h4>
+
 ```java
 VirtualManager vm;
 try
@@ -116,11 +119,13 @@ settings.setUseResourceBuffer(false);
 HTTPServer s = new HTTPServer(1704, settings, false, true);
 s.run();
 ```
+
 It will crypt the content before writing them on the hard drive.<br>
 It will decrypt the content of the requested file before sending it to the requester.<br>
 This way, the user can synchronize the server with Windows and have a crypted folder which can be used as if it was not secured.<br>
 <br>
 HTTPServer class implements Runnable, so it can be used this way :
+
 ```java
 // [...]
 HTTPServer s = new HTTPServer(1700, settings);
